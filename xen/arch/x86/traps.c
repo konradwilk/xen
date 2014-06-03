@@ -3248,9 +3248,13 @@ void do_nmi(struct cpu_user_regs *regs)
     }
 }
 
-void set_nmi_callback(nmi_callback_t callback)
+nmi_callback_t set_nmi_callback(nmi_callback_t callback)
 {
+    nmi_callback_t old_nmi_callback = nmi_callback;
+
     nmi_callback = callback;
+
+    return old_nmi_callback;
 }
 
 void unset_nmi_callback(void)
