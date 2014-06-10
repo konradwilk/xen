@@ -70,7 +70,7 @@
 #include "mce_quirks.h"
 
 /* Machine Check Handler for AMD K8 family series */
-static void k8_machine_check(struct cpu_user_regs *regs, long error_code)
+static void k8_machine_check(const struct cpu_user_regs *regs, long error_code)
 {
 	mcheck_cmn_handler(regs, error_code, mca_allbanks,
 			   __get_cpu_var(mce_clear_banks));
