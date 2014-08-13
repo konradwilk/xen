@@ -26,7 +26,6 @@ static bool_t tasklets_initialised;
 DEFINE_PER_CPU(unsigned long, tasklet_work_to_do);
 
 static DEFINE_PER_CPU(struct list_head, tasklet_list);
-static DEFINE_PER_CPU(struct list_head, softirq_tasklet_list);
 
 /* Protects all lists and tasklet structures. */
 static DEFINE_SPINLOCK(tasklet_lock);
@@ -56,7 +55,7 @@ static void percpu_tasklet_feed(void *arg)
         dst_list = &__get_cpu_var(softirq_list);
         list_add_tail(&t->list, dst_list);
     }
-    raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+    raise_softirq(TASKLET_SOFTIRQ);
 out:
     spin_unlock_irqrestore(&feeder_lock, flags);
 }
@@ -89,18 +88,14 @@ static void tasklet_enqueue(struct tasklet *t)
 
         list = &__get_cpu_var(softirq_list);
         list_add_tail(&t->list, list);
-        raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+        raise_softirq(TASKLET_SOFTIRQ);
 
         local_irq_restore(flags);
         return;
     }
     if ( t->is_softirq )
     {
-        struct list_head *list = &per_cpu(softirq_tasklet_list, cpu);
-        bool_t was_empty = list_empty(list);
-        list_add_tail(&t->list, list);
-        if ( was_empty )
-            cpu_raise_softirq(cpu, TASKLET_SOFTIRQ);
+        BUG();
     }
     else
     {
@@ -218,7 +213,7 @@ void do_tasklet_work_percpu(void)
         t->func(t->data);
         tasklet_unlock(t);
         if ( poke )
-            raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+            raise_softirq(TASKLET_SOFTIRQ);
         /* We could reinit the t->list but tasklet_enqueue does it for us. */
         return;
     }
@@ -228,7 +223,7 @@ void do_tasklet_work_percpu(void)
     INIT_LIST_HEAD(&t->list);
     list_add_tail(&t->list, &__get_cpu_var(softirq_list));
     smp_wmb();
-    raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+    raise_softirq(TASKLET_SOFTIRQ);
     local_irq_enable();
 }
 
@@ -259,24 +254,9 @@ void do_tasklet(void)
     spin_unlock_irq(&tasklet_lock);
 }
 
-/* Softirq context work */
-static void tasklet_softirq_action(void)
-{
-    unsigned int cpu = smp_processor_id();
-    struct list_head *list = &per_cpu(softirq_tasklet_list, cpu);
-
-    spin_lock_irq(&tasklet_lock);
-
-    do_tasklet_work(cpu, list);
-
-    if ( !list_empty(list) && !cpu_is_offline(cpu) )
-        raise_softirq(TASKLET_SOFTIRQ);
-
-    spin_unlock_irq(&tasklet_lock);
-}
 
 /* Per CPU softirq context work. */
-static void tasklet_softirq_percpu_action(void)
+static void tasklet_softirq_action(void)
 {
     do_tasklet_work_percpu();
 }
@@ -365,14 +345,12 @@ static int cpu_callback(
     {
     case CPU_UP_PREPARE:
         INIT_LIST_HEAD(&per_cpu(tasklet_list, cpu));
-        INIT_LIST_HEAD(&per_cpu(softirq_tasklet_list, cpu));
         INIT_LIST_HEAD(&per_cpu(softirq_list, cpu));
         INIT_LIST_HEAD(&per_cpu(tasklet_feeder, cpu));
         break;
     case CPU_UP_CANCELED:
     case CPU_DEAD:
         migrate_tasklets_from_cpu(cpu, &per_cpu(tasklet_list, cpu));
-        migrate_tasklets_from_cpu(cpu, &per_cpu(softirq_tasklet_list, cpu));
         migrate_tasklets_from_cpu(cpu, &per_cpu(softirq_list, cpu));
         migrate_tasklets_from_cpu(cpu, &per_cpu(tasklet_feeder, cpu));
         break;
@@ -394,7 +372,6 @@ void __init tasklet_subsys_init(void)
     cpu_callback(&cpu_nfb, CPU_UP_PREPARE, hcpu);
     register_cpu_notifier(&cpu_nfb);
     open_softirq(TASKLET_SOFTIRQ, tasklet_softirq_action);
-    open_softirq(TASKLET_SOFTIRQ_PERCPU, tasklet_softirq_percpu_action);
     tasklets_initialised = 1;
 }
 
