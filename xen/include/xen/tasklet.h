@@ -22,19 +22,18 @@ struct tasklet
     bool_t is_softirq;
     bool_t is_running;
     bool_t is_dead;
-    bool_t is_percpu;
     void (*func)(unsigned long);
     unsigned long data;
 };
 
-#define _DECLARE_TASKLET(name, func, data, softirq, percpu)             \
+#define _DECLARE_TASKLET(name, func, data, softirq)                     \
     struct tasklet name = {                                             \
-        LIST_HEAD_INIT(name.list), 0, -1, softirq, 0, 0, percpu,        \
+        LIST_HEAD_INIT(name.list), 0, -1, softirq, 0, 0,                \
         func, data }
 #define DECLARE_TASKLET(name, func, data)               \
-    _DECLARE_TASKLET(name, func, data, 0, 0)
+    _DECLARE_TASKLET(name, func, data, 0)
 #define DECLARE_SOFTIRQ_TASKLET(name, func, data)       \
-    _DECLARE_TASKLET(name, func, data, 1, 1)
+    _DECLARE_TASKLET(name, func, data, 1)
 
 /* Indicates status of tasklet work on each CPU. */
 DECLARE_PER_CPU(unsigned long, tasklet_work_to_do);

@@ -49,7 +49,6 @@ static void percpu_tasklet_feed(void *arg)
     while ( !list_empty(list) )
     {
         t = list_entry(list->next, struct tasklet, list);
-        BUG_ON(!t->is_percpu);
         list_del(&t->list);
 
         if ( t->is_softirq )
@@ -76,59 +75,44 @@ out:
 static void tasklet_enqueue(struct tasklet *t)
 {
     unsigned int cpu = t->scheduled_on;
+    unsigned long flags;
+    struct list_head *list;
 
-    if ( t->is_percpu )
+    INIT_LIST_HEAD(&t->list);
+
+    if ( cpu != smp_processor_id() )
     {
-        unsigned long flags;
-        struct list_head *list;
+        spin_lock_irqsave(&feeder_lock, flags);
 
-        INIT_LIST_HEAD(&t->list);
+        list = &per_cpu(tasklet_feeder, cpu);
+        list_add_tail(&t->list, list);
 
-        if ( cpu != smp_processor_id() )
-        {
-            spin_lock_irqsave(&feeder_lock, flags);
+        spin_unlock_irqrestore(&feeder_lock, flags);
+        on_selected_cpus(cpumask_of(cpu), percpu_tasklet_feed, NULL, 1);
+        return;
+     }
+     if ( t->is_softirq )
+     {
+         local_irq_save(flags);
 
-            list = &per_cpu(tasklet_feeder, cpu);
-            list_add_tail(&t->list, list);
+         list = &__get_cpu_var(softirq_list);
+         list_add_tail(&t->list, list);
+         raise_softirq(TASKLET_SOFTIRQ);
 
-            spin_unlock_irqrestore(&feeder_lock, flags);
-            on_selected_cpus(cpumask_of(cpu), percpu_tasklet_feed, NULL, 1);
-            return;
-        }
-        if ( t->is_softirq )
-        {
+         local_irq_restore(flags);
+     }
+     else
+     {
+          unsigned long *work_to_do = &__get_cpu_var(tasklet_work_to_do);
 
-            local_irq_save(flags);
+          local_irq_save(flags);
 
-            list = &__get_cpu_var(softirq_list);
-            list_add_tail(&t->list, list);
-            raise_softirq(TASKLET_SOFTIRQ);
+          list = &__get_cpu_var(tasklet_list);
+          list_add_tail(&t->list, list);
+          if ( !test_and_set_bit(_TASKLET_enqueued, work_to_do) )
+            raise_softirq(SCHEDULE_SOFTIRQ);
 
-            local_irq_restore(flags);
-            return;
-        }
-        else
-        {
-            unsigned long *work_to_do = &__get_cpu_var(tasklet_work_to_do);
-
-            local_irq_save(flags);
-
-            list = &__get_cpu_var(tasklet_list);
-            list_add_tail(&t->list, list);
-            if ( !test_and_set_bit(_TASKLET_enqueued, work_to_do) )
-                raise_softirq(SCHEDULE_SOFTIRQ);
-
-            local_irq_restore(flags);
-            return;
-        }
-    }
-    if ( t->is_softirq )
-    {
-        BUG();
-    }
-    else
-    {
-        BUG();
+          local_irq_restore(flags);
     }
 }
 
@@ -137,16 +121,11 @@ void tasklet_schedule_on_cpu(struct tasklet *t, unsigned int cpu)
     if ( !tasklets_initialised || t->is_dead )
         return;
 
-    if ( t->is_percpu )
+    if ( !test_and_set_bit(TASKLET_STATE_SCHED, &t->state) )
     {
-        if ( !test_and_set_bit(TASKLET_STATE_SCHED, &t->state) )
-        {
-            t->scheduled_on = cpu;
-            tasklet_enqueue(t);
-        }
-        return;
+        t->scheduled_on = cpu;
+        tasklet_enqueue(t);
     }
-    BUG();
 }
 
 void tasklet_schedule(struct tasklet *t)
@@ -306,19 +285,15 @@ static void tasklet_softirq_action(void)
 
 void tasklet_kill(struct tasklet *t)
 {
-    if ( t->is_percpu )
+    while ( test_and_set_bit(TASKLET_STATE_SCHED, &t->state) )
     {
-        while ( test_and_set_bit(TASKLET_STATE_SCHED, &t->state) )
-        {
-            do {
+        do {
                 process_pending_softirqs();
-            } while ( test_bit(TASKLET_STATE_SCHED, &t->state) );
-        }
-        tasklet_unlock_wait(t);
-        clear_bit(TASKLET_STATE_SCHED, &t->state);
-        t->is_dead = 1;
-        return;
+        } while ( test_bit(TASKLET_STATE_SCHED, &t->state) );
     }
+    tasklet_unlock_wait(t);
+    clear_bit(TASKLET_STATE_SCHED, &t->state);
+    t->is_dead = 1;
 }
 
 static void migrate_tasklets_from_cpu(unsigned int cpu, struct list_head *list)
@@ -348,7 +323,6 @@ void tasklet_init(
     t->scheduled_on = -1;
     t->func = func;
     t->data = data;
-    t->is_percpu = 1;
 }
 
 void softirq_tasklet_init(
