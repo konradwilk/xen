@@ -99,8 +99,6 @@ void tasklet_init(
     struct tasklet *t, void (*func)(unsigned long), unsigned long data);
 void softirq_tasklet_init(
     struct tasklet *t, void (*func)(unsigned long), unsigned long data);
-void percpu_tasklet_init(
-    struct tasklet *t, void (*func)(unsigned long), unsigned long data);
 void tasklet_subsys_init(void);
 
 #endif /* __XEN_TASKLET_H__ */

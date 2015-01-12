@@ -30,8 +30,36 @@ static DEFINE_PER_CPU(struct list_head, softirq_tasklet_list);
 
 /* Protects all lists and tasklet structures. */
 static DEFINE_SPINLOCK(tasklet_lock);
+static DEFINE_SPINLOCK(feeder_lock);
 
 static DEFINE_PER_CPU(struct list_head, softirq_list);
+static DEFINE_PER_CPU(struct list_head, tasklet_feeder);
+
+static void percpu_tasklet_feed(void *arg)
+{
+    unsigned long flags;
+    struct tasklet *t;
+    struct list_head *dst_list;
+    struct list_head *list = &__get_cpu_var(tasklet_feeder);
+
+    spin_lock_irqsave(&feeder_lock, flags);
+
+    if ( list_empty(list) )
+        goto out;
+
+    while ( !list_empty(list) )
+    {
+        t = list_entry(list->next, struct tasklet, list);
+        BUG_ON(!t->is_percpu);
+        list_del(&t->list);
+
+        dst_list = &__get_cpu_var(softirq_list);
+        list_add_tail(&t->list, dst_list);
+    }
+    raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+out:
+    spin_unlock_irqrestore(&feeder_lock, flags);
+}
 
 static void tasklet_enqueue(struct tasklet *t)
 {
@@ -44,7 +72,18 @@ static void tasklet_enqueue(struct tasklet *t)
 
         INIT_LIST_HEAD(&t->list);
         BUG_ON( !t->is_softirq );
-        BUG_ON( cpu != smp_processor_id() ); /* Not implemented yet. */
+
+        if ( cpu != smp_processor_id() )
+        {
+            spin_lock_irqsave(&feeder_lock, flags);
+
+            list = &per_cpu(tasklet_feeder, cpu);
+            list_add_tail(&t->list, list);
+
+            spin_unlock_irqrestore(&feeder_lock, flags);
+            on_selected_cpus(cpumask_of(cpu), percpu_tasklet_feed, NULL, 1);
+            return;
+        }
 
         local_irq_save(flags);
 
@@ -314,13 +353,6 @@ void softirq_tasklet_init(
 {
     tasklet_init(t, func, data);
     t->is_softirq = 1;
-}
-
-void percpu_tasklet_init(
-    struct tasklet *t, void (*func)(unsigned long), unsigned long data)
-{
-    tasklet_init(t, func, data);
-    t->is_softirq = 1;
     t->is_percpu = 1;
 }
 
@@ -335,12 +367,14 @@ static int cpu_callback(
         INIT_LIST_HEAD(&per_cpu(tasklet_list, cpu));
         INIT_LIST_HEAD(&per_cpu(softirq_tasklet_list, cpu));
         INIT_LIST_HEAD(&per_cpu(softirq_list, cpu));
+        INIT_LIST_HEAD(&per_cpu(tasklet_feeder, cpu));
         break;
     case CPU_UP_CANCELED:
     case CPU_DEAD:
         migrate_tasklets_from_cpu(cpu, &per_cpu(tasklet_list, cpu));
         migrate_tasklets_from_cpu(cpu, &per_cpu(softirq_tasklet_list, cpu));
         migrate_tasklets_from_cpu(cpu, &per_cpu(softirq_list, cpu));
+        migrate_tasklets_from_cpu(cpu, &per_cpu(tasklet_feeder, cpu));
         break;
     default:
         break;
