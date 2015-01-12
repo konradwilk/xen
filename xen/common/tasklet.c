@@ -31,10 +31,30 @@ static DEFINE_PER_CPU(struct list_head, softirq_tasklet_list);
 /* Protects all lists and tasklet structures. */
 static DEFINE_SPINLOCK(tasklet_lock);
 
+static DEFINE_PER_CPU(struct list_head, softirq_list);
+
 static void tasklet_enqueue(struct tasklet *t)
 {
     unsigned int cpu = t->scheduled_on;
 
+    if ( t->is_percpu )
+    {
+        unsigned long flags;
+        struct list_head *list;
+
+        INIT_LIST_HEAD(&t->list);
+        BUG_ON( !t->is_softirq );
+        BUG_ON( cpu != smp_processor_id() ); /* Not implemented yet. */
+
+        local_irq_save(flags);
+
+        list = &__get_cpu_var(softirq_list);
+        list_add_tail(&t->list, list);
+        raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+
+        local_irq_restore(flags);
+        return;
+    }
     if ( t->is_softirq )
     {
         struct list_head *list = &per_cpu(softirq_tasklet_list, cpu);
@@ -56,16 +76,25 @@ void tasklet_schedule_on_cpu(struct tasklet *t, unsigned int cpu)
 {
     unsigned long flags;
 
-    spin_lock_irqsave(&tasklet_lock, flags);
+    if ( !tasklets_initialised || t->is_dead )
+        return;
 
-    if ( tasklets_initialised && !t->is_dead )
+    if ( t->is_percpu )
     {
-        t->scheduled_on = cpu;
-        if ( !t->is_running )
+        if ( !test_and_set_bit(TASKLET_STATE_SCHED, &t->state) )
         {
-            list_del(&t->list);
+            t->scheduled_on = cpu;
             tasklet_enqueue(t);
         }
+        return;
+    }
+    spin_lock_irqsave(&tasklet_lock, flags);
+
+    t->scheduled_on = cpu;
+    if ( !t->is_running )
+    {
+        list_del(&t->list);
+        tasklet_enqueue(t);
     }
 
     spin_unlock_irqrestore(&tasklet_lock, flags);
@@ -102,6 +131,66 @@ static void do_tasklet_work(unsigned int cpu, struct list_head *list)
         BUG_ON(t->is_dead || !list_empty(&t->list));
         tasklet_enqueue(t);
     }
+}
+
+void do_tasklet_work_percpu(void)
+{
+    struct tasklet *t = NULL;
+    struct list_head *head;
+    bool_t poke = 0;
+
+    local_irq_disable();
+    head = &__get_cpu_var(softirq_list);
+
+    if ( !list_empty(head) )
+    {
+        t = list_entry(head->next, struct tasklet, list);
+
+        if ( head->next == head->prev ) /* One singular item. Re-init head. */
+            INIT_LIST_HEAD(&__get_cpu_var(softirq_list));
+        else
+        {
+            /* Multiple items, update head to skip 't'. */
+            struct list_head *list;
+
+            /* One item past 't'. */
+            list = head->next->next;
+
+            BUG_ON(list == NULL);
+
+            /* And update head to skip 't'. Note that t->list.prev still
+             * points to head, but we don't care as we only process one tasklet
+             * and once done the tasklet list is re-init one way or another.
+             */
+            head->next = list;
+            poke = 1;
+        }
+    }
+    local_irq_enable();
+
+    if ( !t )
+        return; /* Never saw it happend, but we might have a spurious case? */
+
+    if ( tasklet_trylock(t) )
+    {
+        if ( !test_and_clear_bit(TASKLET_STATE_SCHED, &t->state) )
+                BUG();
+        sync_local_execstate();
+        t->func(t->data);
+        tasklet_unlock(t);
+        if ( poke )
+            raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+        /* We could reinit the t->list but tasklet_enqueue does it for us. */
+        return;
+    }
+
+    local_irq_disable();
+
+    INIT_LIST_HEAD(&t->list);
+    list_add_tail(&t->list, &__get_cpu_var(softirq_list));
+    smp_wmb();
+    raise_softirq(TASKLET_SOFTIRQ_PERCPU);
+    local_irq_enable();
 }
 
 /* VCPU context work */
@@ -147,10 +236,29 @@ static void tasklet_softirq_action(void)
     spin_unlock_irq(&tasklet_lock);
 }
 
+/* Per CPU softirq context work. */
+static void tasklet_softirq_percpu_action(void)
+{
+    do_tasklet_work_percpu();
+}
+
 void tasklet_kill(struct tasklet *t)
 {
     unsigned long flags;
 
+    if ( t->is_percpu )
+    {
+        while ( test_and_set_bit(TASKLET_STATE_SCHED, &t->state) )
+        {
+            do {
+                process_pending_softirqs();
+            } while ( test_bit(TASKLET_STATE_SCHED, &t->state) );
+        }
+        tasklet_unlock_wait(t);
+        clear_bit(TASKLET_STATE_SCHED, &t->state);
+        t->is_dead = 1;
+        return;
+    }
     spin_lock_irqsave(&tasklet_lock, flags);
 
     if ( !list_empty(&t->list) )
@@ -208,6 +316,14 @@ void softirq_tasklet_init(
     t->is_softirq = 1;
 }
 
+void percpu_tasklet_init(
+    struct tasklet *t, void (*func)(unsigned long), unsigned long data)
+{
+    tasklet_init(t, func, data);
+    t->is_softirq = 1;
+    t->is_percpu = 1;
+}
+
 static int cpu_callback(
     struct notifier_block *nfb, unsigned long action, void *hcpu)
 {
@@ -218,11 +334,13 @@ static int cpu_callback(
     case CPU_UP_PREPARE:
         INIT_LIST_HEAD(&per_cpu(tasklet_list, cpu));
         INIT_LIST_HEAD(&per_cpu(softirq_tasklet_list, cpu));
+        INIT_LIST_HEAD(&per_cpu(softirq_list, cpu));
         break;
     case CPU_UP_CANCELED:
     case CPU_DEAD:
         migrate_tasklets_from_cpu(cpu, &per_cpu(tasklet_list, cpu));
         migrate_tasklets_from_cpu(cpu, &per_cpu(softirq_tasklet_list, cpu));
+        migrate_tasklets_from_cpu(cpu, &per_cpu(softirq_list, cpu));
         break;
     default:
         break;
@@ -242,6 +360,7 @@ void __init tasklet_subsys_init(void)
     cpu_callback(&cpu_nfb, CPU_UP_PREPARE, hcpu);
     register_cpu_notifier(&cpu_nfb);
     open_softirq(TASKLET_SOFTIRQ, tasklet_softirq_action);
+    open_softirq(TASKLET_SOFTIRQ_PERCPU, tasklet_softirq_percpu_action);
     tasklets_initialised = 1;
 }
 

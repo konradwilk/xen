@@ -1511,7 +1511,7 @@ int hvm_vcpu_initialise(struct vcpu *v)
     if ( (rc = hvm_funcs.vcpu_initialise(v)) != 0 ) /* teardown: hvm_funcs.vcpu_destroy */
         goto fail3;
 
-    softirq_tasklet_init(
+    percpu_tasklet_init(
         &v->arch.hvm_vcpu.assert_evtchn_irq_tasklet,
         (void(*)(unsigned long))hvm_assert_evtchn_irq,
         (unsigned long)v);
