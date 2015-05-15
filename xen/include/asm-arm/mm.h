@@ -208,6 +208,8 @@ static inline void __iomem *ioremap_wc(paddr_t start, size_t len)
 #define pfn_to_paddr(pfn) ((paddr_t)(pfn) << PAGE_SHIFT)
 #define paddr_to_pfn(pa)  ((unsigned long)((pa) >> PAGE_SHIFT))
 #define paddr_to_pdx(pa)    pfn_to_pdx(paddr_to_pfn(pa))
+#define vmap_to_mfn(va)     paddr_to_pfn(virt_to_maddr((vaddr_t)va))
+#define vmap_to_page(va)    mfn_to_page(vmap_to_mfn(va))
 
 
 static inline paddr_t __virt_to_maddr(vaddr_t va)
