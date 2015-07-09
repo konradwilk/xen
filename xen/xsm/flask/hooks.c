@@ -1304,6 +1304,10 @@ static int flask_platform_op(uint32_t op)
     case XENPF_get_cpuinfo:
         return domain_has_xen(current->domain, XEN__GETCPUINFO);
 
+    case XENPF_get_symbol:
+        return avc_has_perm(domain_sid(current->domain), SECINITSID_XEN,
+                            SECCLASS_XEN2, XEN2__GET_SYMBOL, NULL);
+
     default:
         printk("flask_platform_op: Unknown op %d\n", op);
         return -EPERM;

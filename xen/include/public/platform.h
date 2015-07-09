@@ -527,6 +527,24 @@ struct xenpf_core_parking {
 typedef struct xenpf_core_parking xenpf_core_parking_t;
 DEFINE_XEN_GUEST_HANDLE(xenpf_core_parking_t);
 
+#define XENPF_get_symbol   63
+struct xenpf_symdata {
+    /* IN/OUT variables */
+    uint32_t namelen; /* IN:  size of name buffer                       */
+                      /* OUT: strlen(name) of hypervisor symbol (may be */
+                      /*      larger than what's been copied to guest)  */
+    uint32_t symnum;  /* IN:  Symbol to read                            */
+                      /* OUT: Next available symbol. If same as IN then */
+                      /*      we reached the end                        */
+
+    /* OUT variables */
+    XEN_GUEST_HANDLE(char) name;
+    uint64_t address;
+    char type;
+};
+typedef struct xenpf_symdata xenpf_symdata_t;
+DEFINE_XEN_GUEST_HANDLE(xenpf_symdata_t);
+
 /*
  * ` enum neg_errnoval
  * ` HYPERVISOR_platform_op(const struct xen_platform_op*);
@@ -553,6 +571,7 @@ struct xen_platform_op {
         struct xenpf_cpu_hotadd        cpu_add;
         struct xenpf_mem_hotadd        mem_add;
         struct xenpf_core_parking      core_parking;
+        struct xenpf_symdata           symdata;
         uint8_t                        pad[128];
     } u;
 };
