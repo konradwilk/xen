@@ -25,6 +25,7 @@ INSTALL_SBIN-y := xen-bugtool xen-python-path xenperf xenpm xen-tmem-list-parse 
 INSTALL_SBIN-$(CONFIG_X86) += xen-hvmctx xen-hvmcrash xen-lowmemd xen-mfndump
 INSTALL_SBIN-$(CONFIG_MIGRATE) += xen-hptool
 INSTALL_SBIN := $(INSTALL_SBIN-y)
+INSTALL_SBIN                   += xen-xsplice
 
 INSTALL_PRIVBIN-y := xenpvnetboot
 INSTALL_PRIVBIN := $(INSTALL_PRIVBIN-y)
@@ -79,6 +80,9 @@ xen-mfndump: xen-mfndump.o
 	$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS_libxenctrl) $(LDLIBS_libxenguest) $(LDLIBS_libxenstore) $(APPEND_LDFLAGS)
 
 xenwatchdogd: xenwatchdogd.o
+	$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS_libxenctrl) $(APPEND_LDFLAGS)
+
+xen-xsplice: xen-xsplice.o
 	$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS_libxenctrl) $(APPEND_LDFLAGS)
 
 xen-lowmemd: xen-lowmemd.o
