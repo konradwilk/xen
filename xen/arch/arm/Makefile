@@ -57,6 +57,8 @@ ifeq ($(CONFIG_ARM_64),y)
 	ln -sf $(notdir $@)  ../../$(notdir $@).efi
 endif
 
+tests:
+
 $(TARGET).axf: $(TARGET)-syms
 	# XXX: VE model loads by VMA so instead of
 	# making a proper ELF we link with LMA == VMA and adjust crudely
