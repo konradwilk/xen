@@ -48,6 +48,7 @@ obj-y += wait.o
 obj-y += xmalloc_tlsf.o
 obj-y += rcupdate.o
 obj-$(CONFIG_XSPLICE) += xsplice.o
+obj-$(CONFIG_XSPLICE) += xsplice_elf.o
 obj-y += tmem.o
 obj-y += tmem_xen.o
 obj-y += radix-tree.o
