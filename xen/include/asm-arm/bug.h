@@ -3,6 +3,7 @@
 
 #define BUG() __bug(__FILE__, __LINE__)
 #define WARN() __warn(__FILE__, __LINE__)
+#define BUGFRAME_NR     3
 
 #endif /* __X86_BUG_H__ */
 /*

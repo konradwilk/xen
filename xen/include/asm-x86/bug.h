@@ -26,9 +26,12 @@ struct bug_frame {
 #define BUGFRAME_warn   1
 #define BUGFRAME_bug    2
 #define BUGFRAME_assert 3
+#define BUGFRAME_NR     4
+
 
 #define BUG_FRAME(type, line, ptr, second_frame, msg) do {                   \
     BUILD_BUG_ON((line) >> (BUG_LINE_LO_WIDTH + BUG_LINE_HI_WIDTH));         \
+    BUILD_BUG_ON((type) >= BUGFRAME_NR);                                     \
     asm volatile ( ".Lbug%=: ud2\n"                                          \
                    ".pushsection .bug_frames.%c0, \"a\", @progbits\n"        \
                    ".p2align 2\n"                                            \
@@ -65,5 +68,6 @@ extern const struct bug_frame __start_bug_frames[],
                               __stop_bug_frames_1[],
                               __stop_bug_frames_2[],
                               __stop_bug_frames_3[];
+
 
 #endif /* __X86_BUG_H__ */
