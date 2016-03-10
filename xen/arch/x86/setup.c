@@ -26,6 +26,7 @@
 #include <xen/pfn.h>
 #include <xen/nodemask.h>
 #include <xen/tmem_xen.h> /* for opt_tmem only */
+#include <xen/virtual_region.h>
 #include <xen/watchdog.h>
 #include <public/version.h>
 #include <compat/platform.h>
@@ -508,6 +509,9 @@ static void noinline init_done(void)
     /* Free (or page-protect) the init areas. */
     memset(__init_begin, 0xcc, __init_end - __init_begin); /* int3 poison */
     free_xen_data(__init_begin, __init_end);
+    /* MUST be done prior to removing .init data. */
+    unregister_init_virtual_region();
+
     printk("Freed %ldkB init memory.\n", (long)(__init_end-__init_begin)>>10);
 
     startup_cpu_idle_loop();
@@ -560,6 +564,8 @@ void __init __start_xen(unsigned long mbi_p)
     percpu_init_areas();
 
     set_intr_gate(TRAP_page_fault, &early_page_fault);
+
+    setup_virtual_regions(__start___ex_table, __stop___ex_table);
 
     loader = (mbi->flags & MBI_LOADERNAME)
         ? (char *)__va(mbi->boot_loader_name) : "unknown";

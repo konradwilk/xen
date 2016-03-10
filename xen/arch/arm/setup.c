@@ -34,6 +34,7 @@
 #include <xen/keyhandler.h>
 #include <xen/cpu.h>
 #include <xen/pfn.h>
+#include <xen/virtual_region.h>
 #include <xen/vmap.h>
 #include <xen/libfdt/libfdt.h>
 #include <asm/page.h>
@@ -775,6 +776,9 @@ void __init start_xen(unsigned long boot_phys_offset,
     serial_endboot();
 
     system_state = SYS_STATE_active;
+
+    /* Must be done past setting system_state. */
+    unregister_init_virtual_region();
 
     domain_unpause_by_systemcontroller(dom0);
 

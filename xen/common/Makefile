@@ -41,6 +41,7 @@ obj-y += time.o
 obj-y += timer.o
 obj-y += trace.o
 obj-y += version.o
+obj-y += virtual_region.o
 obj-y += vmap.o
 obj-y += vsprintf.o
 obj-y += wait.o

@@ -29,6 +29,7 @@
 #include <xen/hypercall.h>
 #include <xen/softirq.h>
 #include <xen/domain_page.h>
+#include <xen/virtual_region.h>
 #include <public/sched.h>
 #include <public/xen.h>
 #include <asm/event.h>
@@ -71,6 +72,8 @@ integer_param("debug_stack_lines", debug_stack_lines);
 
 void __cpuinit init_traps(void)
 {
+    setup_virtual_regions(NULL, NULL);
+
     /* Setup Hyp vector base */
     WRITE_SYSREG((vaddr_t)hyp_traps_vector, VBAR_EL2);
 
