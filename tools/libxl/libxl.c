@@ -5374,6 +5374,7 @@ const libxl_version_info* libxl_get_version_info(libxl_ctx *ctx)
     GC_INIT(ctx);
     char *buf;
     xen_version_op_val_t val = 0;
+    int r;
     libxl_version_info *info = &ctx->version_info;
 
     if (info->xen_version_extra != NULL)
@@ -5416,8 +5417,21 @@ const libxl_version_info* libxl_get_version_info(libxl_ctx *ctx)
 
     info->virt_start = val;
 
-    (void)libxl__xc_version_wrapper(gc, XEN_VERSION_commandline, buf,
-                                    info->pagesize, &info->commandline);
+    if (libxl__xc_version_wrapper(gc, XEN_VERSION_commandline, buf,
+                                  info->pagesize, &info->commandline) < 0)
+        goto out;
+
+    r = xc_version(ctx->xch, XEN_VERSION_build_id, buf, info->pagesize);
+    if (r < 0) {
+        info->build_id = libxl__strdup(NOGC, "");
+    } else if (r > 0) {
+        unsigned int i;
+
+        info->build_id = libxl__zalloc(NOGC, (r * 2) + 1);
+
+        for (i = 0; i < r; i++)
+            snprintf(&info->build_id[i * 2], 3, "%02hhx", buf[i]);
+    }
  out:
     GC_FREE;
     return info;
