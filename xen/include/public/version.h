@@ -157,6 +157,9 @@ DEFINE_XEN_GUEST_HANDLE(xen_version_op_val_t);
 /* arg = char[]. Contains NUL terminated utf-8 string. */
 #define XEN_VERSION_commandline         9
 
+/* arg = void. Contains binary value of hypervisor build-id. */
+#define XEN_VERSION_build_id            10
+
 #endif /* __XEN_PUBLIC_VERSION_H__ */
 
 /*

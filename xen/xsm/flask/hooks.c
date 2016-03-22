@@ -1697,6 +1697,9 @@ static int flask_version_op (uint32_t op)
     case XEN_VERSION_commandline:
         return avc_has_perm(dsid, SECINITSID_XEN, SECCLASS_VERSION,
                             VERSION__COMMANDLINE, NULL);
+    case XEN_VERSION_build_id:
+        return avc_has_perm(dsid, SECINITSID_XEN, SECCLASS_VERSION,
+                            VERSION__BUILD_ID, NULL);
     default:
         return -EPERM;
     }

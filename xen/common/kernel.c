@@ -474,6 +474,10 @@ DO(version_op)(unsigned int cmd, XEN_GUEST_HANDLE_PARAM(void) arg,
         ptr = saved_cmdline;
         break;
 
+    case XEN_VERSION_build_id:
+        rc = xen_build_id(&ptr, &sz);
+        break;
+
     default:
         rc = -ENOSYS;
     }

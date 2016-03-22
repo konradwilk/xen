@@ -540,4 +540,6 @@ class version
     guest_handle
 # Xen command line.
     commandline
+# Build id of the hypervisor
+    build_id
 }
