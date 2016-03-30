@@ -3220,7 +3220,7 @@ static int dummy_nmi_callback(const struct cpu_user_regs *regs, int cpu)
     return 0;
 }
  
-static nmi_callback_t nmi_callback = dummy_nmi_callback;
+static nmi_callback_t *nmi_callback = dummy_nmi_callback;
 
 void do_nmi(const struct cpu_user_regs *regs)
 {
@@ -3248,9 +3248,9 @@ void do_nmi(const struct cpu_user_regs *regs)
     }
 }
 
-nmi_callback_t set_nmi_callback(nmi_callback_t callback)
+nmi_callback_t *set_nmi_callback(nmi_callback_t *callback)
 {
-    nmi_callback_t old_nmi_callback = nmi_callback;
+    nmi_callback_t *old_nmi_callback = nmi_callback;
 
     nmi_callback = callback;
 
