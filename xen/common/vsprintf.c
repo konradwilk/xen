@@ -20,6 +20,7 @@
 #include <xen/symbols.h>
 #include <xen/lib.h>
 #include <xen/sched.h>
+#include <xen/xsplice.h>
 #include <asm/div64.h>
 #include <asm/page.h>
 
@@ -331,15 +332,22 @@ static char *pointer(char *str, char *end, const char **fmt_ptr,
     {
         unsigned long sym_size, sym_offset;
         char namebuf[KSYM_NAME_LEN+1];
+        bool_t payload = 0;
 
         /* Advance parents fmt string, as we have consumed 's' or 'S' */
         ++*fmt_ptr;
 
         s = symbols_lookup((unsigned long)arg, &sym_size, &sym_offset, namebuf);
-
-        /* If the symbol is not found, fall back to printing the address */
+        /* If the symbol is not found, fall back to printing the address. */
         if ( !s )
             break;
+
+        /*
+         * namebuf contents and s for core hypervisor are same but for xSplice
+         * payloads they differ (namebuf contains the name of the payload).
+         */
+        if ( namebuf != s )
+            payload = 1;
 
         /* Print symbol name */
         str = string(str, end, s, -1, -1, 0);
@@ -352,6 +360,13 @@ static char *pointer(char *str, char *end, const char **fmt_ptr,
                 *str = '/';
             ++str;
             str = number(str, end, sym_size, 16, -1, -1, SPECIAL);
+        }
+
+        if ( payload )
+        {
+            str = string(str, end, " [", -1, -1, 0);
+            str = string(str, end, namebuf, -1, -1, 0);
+            str = string(str, end, "]", -1, -1, 0);
         }
 
         return str;
