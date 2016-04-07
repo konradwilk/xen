@@ -122,6 +122,32 @@ static int verify_payload(const xen_sysctl_xsplice_upload_t *upload, char *n)
     return 0;
 }
 
+bool_t is_patch(const void *ptr)
+{
+    struct payload *data;
+
+    /*
+     * No locking since this list is only ever changed during apply or revert
+     * context.
+     */
+    list_for_each_entry ( data, &applied_list, applied_list )
+    {
+        if ( ptr >= data->rw_addr &&
+             ptr < (data->rw_addr + data->rw_size) )
+            return 1;
+
+        if ( ptr >= data->ro_addr &&
+             ptr < (data->ro_addr + data->ro_size) )
+            return 1;
+
+        if ( ptr >= data->text_addr &&
+             ptr < (data->text_addr + data->text_size) )
+            return 1;
+    }
+
+    return 0;
+}
+
 unsigned long xsplice_symbols_lookup_by_name(const char *symname)
 {
     struct payload *data;
@@ -478,6 +504,30 @@ static int prepare_payload(struct payload *payload,
     region->symbols_lookup = xsplice_symbols_lookup;
     region->start = (unsigned long)payload->text_addr;
     region->end = (unsigned long)(payload->text_addr + payload->text_size);
+
+    /* Optional sections. */
+    for ( i = 0; i < BUGFRAME_NR; i++ )
+    {
+        char str[14];
+
+        snprintf(str, sizeof(str), ".bug_frames.%u", i);
+        sec = xsplice_elf_sec_by_name(elf, str);
+        if ( !sec )
+            continue;
+
+        if ( sec->sec->sh_size &&
+             (sec->sec->sh_size % sizeof(*region->frame[i].bugs)) )
+        {
+            dprintk(XENLOG_DEBUG, XSPLICE "%s: Wrong size of .bug_frames.%u!\n",
+                    elf->name, i);
+            return -EINVAL;
+        }
+
+        region->frame[i].bugs = sec->load_addr;
+        if ( sec->sec->sh_size)
+            region->frame[i].n_bugs = sec->sec->sh_size /
+                                      sizeof(*region->frame[i].bugs);
+    }
 
     return 0;
 }
