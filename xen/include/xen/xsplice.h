@@ -54,6 +54,15 @@ struct xsplice_patch_func_internal {
 };
 #endif
 
+/*
+ * We use alternative and exception table code - which by default are __init
+ * only, however we need them during runtime. These macros allows us to build
+ * the image with these functions built-in. (See the #else below).
+ */
+#define __INITCONST
+#define __INITDATA
+#define __INIT
+
 /* Convenience define for printk. */
 #define XSPLICE "xsplice: "
 
@@ -111,6 +120,14 @@ void arch_xsplice_post_action(void);
 void arch_xsplice_mask(void);
 void arch_xsplice_unmask(void);
 #else
+
+/*
+ * If not compiling with xSplice certain functionality should stay as
+ * __init.
+ */
+#define __INITCONST    __initconst
+#define __INITDATA     __initdata
+#define __INIT         __init
 
 #include <xen/errno.h> /* For -ENOSYS */
 static inline int xsplice_op(struct xen_sysctl_xsplice_op *op)
