@@ -26,14 +26,12 @@ clean::
 # the last entry in the build target.
 #
 .PHONY: config.h
-config.h: OLD_CODE=$(call CODE_ADDR,$(BASEDIR)/xen-syms,xen_extra_version)
 config.h: OLD_CODE_SZ=$(call CODE_SZ,$(BASEDIR)/xen-syms,xen_extra_version)
 config.h: NEW_CODE_SZ=$(call CODE_SZ,$<,xen_hello_world)
 config.h: xen_hello_world_func.o
 	(set -e; \
 	 echo "#define NEW_CODE_SZ $(NEW_CODE_SZ)"; \
-	 echo "#define OLD_CODE_SZ $(OLD_CODE_SZ)"; \
-	 echo "#define OLD_CODE $(OLD_CODE)") > $@
+	 echo "#define OLD_CODE_SZ $(OLD_CODE_SZ)") > $@
 
 .PHONY: xsplice
 xsplice: config.h
