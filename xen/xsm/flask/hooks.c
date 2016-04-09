@@ -788,6 +788,10 @@ static int flask_sysctl(int cmd)
     case XEN_SYSCTL_numainfo:
         return domain_has_xen(current->domain, XEN__PHYSINFO);
 
+    case XEN_SYSCTL_xsplice_op:
+        return avc_current_has_perm(SECINITSID_XEN, SECCLASS_XEN2,
+                                    XEN2__XSPLICE_OP, NULL);
+
     default:
         printk("flask_sysctl: Unknown op %d\n", cmd);
         return -EPERM;

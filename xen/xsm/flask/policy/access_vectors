@@ -75,6 +75,14 @@ class xen
     setscheduler
 }
 
+# This is a continuation of class xen, since only 32 permissions can be
+# defined per class
+class xen2
+{
+# XEN_SYSCTL_xsplice_op
+    xsplice_op
+}
+
 # Classes domain and domain2 consist of operations that a domain performs on
 # another domain or on itself.  Unless otherwise specified, the source is the
 # domain executing the hypercall, and the target is the domain being operated on

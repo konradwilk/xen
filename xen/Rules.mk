@@ -11,6 +11,8 @@ crash_debug   ?= n
 frame_pointer ?= n
 lto           ?= n
 
+CONFIG_XSPLICE ?= y
+
 include $(XEN_ROOT)/Config.mk
 
 # Hardcoded configuration implications and dependencies.
@@ -61,6 +63,7 @@ CFLAGS-$(HAS_DEVICE_TREE) += -DHAS_DEVICE_TREE
 CFLAGS-$(HAS_PCI)       += -DHAS_PCI
 CFLAGS-$(HAS_IOPORTS)   += -DHAS_IOPORTS
 CFLAGS-$(frame_pointer) += -fno-omit-frame-pointer -DCONFIG_FRAME_POINTER
+CFLAGS-$(CONFIG_XSPLICE) += -DCONFIG_XSPLICE
 
 ifneq ($(max_phys_cpus),)
 CFLAGS-y                += -DMAX_PHYS_CPUS=$(max_phys_cpus)
