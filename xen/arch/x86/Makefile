@@ -6,7 +6,11 @@ subdir-y += mm
 subdir-$(CONFIG_XENOPROF) += oprofile
 subdir-y += x86_64
 
+ifdef CONFIG_XSPLICE
+obj-y += alternative.o
+else
 obj-bin-y += alternative.init.o
+endif
 obj-y += apic.o
 obj-y += bitops.o
 obj-bin-y += bzimage.init.o
