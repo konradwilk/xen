@@ -36,6 +36,7 @@
 #include <xen/cpu.h>
 #include <xen/wait.h>
 #include <xen/guest_access.h>
+#include <xen/xsplice.h>
 #include <public/sysctl.h>
 #include <public/hvm/hvm_vcpu.h>
 #include <asm/regs.h>
@@ -120,6 +121,7 @@ static void idle_loop(void)
         (*pm_idle)();
         do_tasklet();
         do_softirq();
+        check_for_xsplice_work(); /* Must be last. */
     }
 }
 
