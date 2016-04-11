@@ -14,6 +14,7 @@
 #include <xen/smp.h>
 #include <xen/softirq.h>
 #include <xen/spinlock.h>
+#include <xen/symbols.h>
 #include <xen/vmap.h>
 #include <xen/wait.h>
 #include <xen/xsplice_elf.h>
@@ -51,6 +52,9 @@ struct payload {
     struct list_head applied_list;       /* Linked to 'applied_list'. */
     struct xsplice_patch_func_internal *funcs;    /* The array of functions to patch. */
     unsigned int nfuncs;                 /* Nr of functions to patch. */
+    struct xsplice_symbol *symtab;       /* All symbols. */
+    char *strtab;                        /* Pointer to .strtab. */
+    unsigned int nsyms;                  /* Nr of entries in .strtab and symbols. */
     char name[XEN_XSPLICE_NAME_SIZE];    /* Name of it. */
 };
 
@@ -110,6 +114,28 @@ static int verify_payload(const xen_sysctl_xsplice_upload_t *upload, char *n)
 
     if ( !guest_handle_okay(upload->payload, upload->size) )
         return -EFAULT;
+
+    return 0;
+}
+
+unsigned long xsplice_symbols_lookup_by_name(const char *symname)
+{
+    struct payload *data;
+
+    ASSERT(spin_is_locked(&payload_lock));
+    list_for_each_entry ( data, &payload_list, list )
+    {
+        unsigned int i;
+
+        for ( i = 0; i < data->nsyms; i++ )
+        {
+            if ( !data->symtab[i].new_symbol )
+                continue;
+
+            if ( !strcmp(data->symtab[i].name, symname) )
+                return data->symtab[i].value;
+        }
+    }
 
     return 0;
 }
@@ -379,7 +405,125 @@ static int prepare_payload(struct payload *payload,
         for ( j = 0; j < ARRAY_SIZE(f->u.pad); j++ )
             if ( f->u.pad[j] )
                 return -EINVAL;
+
+        /* Lookup function's old address if not already resolved. */
+        if ( !f->old_addr )
+        {
+            f->old_addr = (void *)symbols_lookup_by_name(f->name);
+            if ( !f->old_addr )
+            {
+                f->old_addr = (void *)xsplice_symbols_lookup_by_name(f->name);
+                if ( !f->old_addr )
+                {
+                    dprintk(XENLOG_ERR, XSPLICE "%s: Could not resolve old address of %s\n",
+                            elf->name, f->name);
+                    return -ENOENT;
+                }
+            }
+            dprintk(XENLOG_DEBUG, XSPLICE "%s: Resolved old address %s => %p\n",
+                    elf->name, f->name, f->old_addr);
+        }
     }
+
+    return 0;
+}
+
+static bool_t is_payload_symbol(const struct xsplice_elf *elf,
+                                const struct xsplice_elf_sym *sym)
+{
+    if ( sym->sym->st_shndx == SHN_UNDEF ||
+         sym->sym->st_shndx >= elf->hdr->e_shnum )
+        return 0;
+
+    return (elf->sec[sym->sym->st_shndx].sec->sh_flags & SHF_ALLOC) &&
+            (ELF64_ST_TYPE(sym->sym->st_info) == STT_OBJECT ||
+             ELF64_ST_TYPE(sym->sym->st_info) == STT_FUNC);
+}
+
+static int build_symbol_table(struct payload *payload,
+                              const struct xsplice_elf *elf)
+{
+    unsigned int i, j, nsyms = 0;
+    size_t strtab_len = 0;
+    struct xsplice_symbol *symtab;
+    char *strtab;
+
+    ASSERT(payload->nfuncs);
+
+    /* Recall that section @0 is always NULL. */
+    for ( i = 1; i < elf->nsym; i++ )
+    {
+        if ( is_payload_symbol(elf, elf->sym + i) )
+        {
+            nsyms++;
+            strtab_len += strlen(elf->sym[i].name) + 1;
+        }
+    }
+
+    symtab = xmalloc_array(struct xsplice_symbol, nsyms);
+    strtab = xmalloc_array(char, strtab_len);
+
+    if ( !strtab || !symtab )
+    {
+        xfree(strtab);
+        xfree(symtab);
+        return -ENOMEM;
+    }
+
+    nsyms = 0;
+    strtab_len = 0;
+    for ( i = 1; i < elf->nsym; i++ )
+    {
+        if ( is_payload_symbol(elf, elf->sym + i) )
+        {
+            symtab[nsyms].name = strtab + strtab_len;
+            symtab[nsyms].size = elf->sym[i].sym->st_size;
+            symtab[nsyms].value = elf->sym[i].sym->st_value;
+            symtab[nsyms].new_symbol = 0; /* To be checked below. */
+            strtab_len += strlcpy(strtab + strtab_len, elf->sym[i].name,
+                                  KSYM_NAME_LEN) + 1;
+            nsyms++;
+        }
+    }
+
+    for ( i = 0; i < nsyms; i++ )
+    {
+        bool_t found = 0;
+
+        for ( j = 0; j < payload->nfuncs; j++ )
+        {
+            if ( symtab[i].value == (unsigned long)payload->funcs[j].new_addr )
+            {
+                found = 1;
+                break;
+            }
+        }
+
+        if ( !found )
+        {
+            if ( xsplice_symbols_lookup_by_name(symtab[i].name) )
+            {
+                dprintk(XENLOG_ERR, XSPLICE "%s: duplicate new symbol: %s\n",
+                        elf->name, symtab[i].name);
+                xfree(symtab);
+                xfree(strtab);
+                return -EEXIST;
+            }
+            symtab[i].new_symbol = 1;
+            dprintk(XENLOG_DEBUG, XSPLICE "%s: new symbol %s\n",
+                     elf->name, symtab[i].name);
+        }
+        else
+        {
+            /* new_symbol is not set. */
+            dprintk(XENLOG_DEBUG, XSPLICE "%s: overriding symbol %s\n",
+                    elf->name, symtab[i].name);
+        }
+    }
+
+    payload->symtab = symtab;
+    payload->strtab = strtab;
+    payload->nsyms = nsyms;
 
     return 0;
 }
@@ -391,6 +535,8 @@ static void free_payload(struct payload *data)
     payload_cnt--;
     payload_version++;
     free_payload_data(data);
+    xfree(data->symtab);
+    xfree(data->strtab);
     xfree(data);
 }
 
@@ -420,6 +566,10 @@ static int load_payload_data(struct payload *payload, void *raw, size_t len)
         goto out;
 
     rc = prepare_payload(payload, &elf);
+    if ( rc )
+        goto out;
+
+    rc = build_symbol_table(payload, &elf);
     if ( rc )
         goto out;
 
@@ -494,8 +644,12 @@ static int xsplice_upload(xen_sysctl_xsplice_upload_t *upload)
 
     vfree(raw_data);
 
-    if ( rc )
+    if ( rc && data )
+    {
+        xfree(data->symtab);
+        xfree(data->strtab);
         xfree(data);
+    }
 
     return rc;
 }

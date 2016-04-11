@@ -46,8 +46,16 @@ struct xsplice_patch_func_internal {
 /* Convenience define for printk. */
 #define XSPLICE "xsplice: "
 
+struct xsplice_symbol {
+    const char *name;
+    uint64_t value;
+    size_t size;
+    bool_t new_symbol;
+};
+
 int xsplice_op(struct xen_sysctl_xsplice_op *);
 void check_for_xsplice_work(void);
+unsigned long xsplice_symbols_lookup_by_name(const char *symname);
 
 /* Arch hooks. */
 int arch_xsplice_verify_elf(const struct xsplice_elf *elf);

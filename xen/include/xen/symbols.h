@@ -23,4 +23,6 @@ const char *symbols_lookup(unsigned long addr,
 int xensyms_read(uint32_t *symnum, char *type,
                  uint64_t *address, char *name);
 
+unsigned long symbols_lookup_by_name(const char *symname);
+
 #endif /*_XEN_SYMBOLS_H*/
