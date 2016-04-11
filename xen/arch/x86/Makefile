@@ -64,6 +64,7 @@ obj-y += vm_event.o
 obj-y += xstate.o
 
 obj-$(crash_debug) += gdbstub.o
+obj-$(CONFIG_XSPLICE) += xsplice.o
 
 x86_emulate.o: x86_emulate/x86_emulate.c x86_emulate/x86_emulate.h
 
