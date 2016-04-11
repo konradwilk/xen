@@ -11,12 +11,43 @@ struct xsplice_elf_sec;
 struct xsplice_elf_sym;
 struct xen_sysctl_xsplice_op;
 
+#include <xen/elfstructs.h>
 #ifdef CONFIG_XSPLICE
+
+/*
+ * The structure which defines the patching. This is what the hypervisor
+ * expects in the '.xsplice.func' section of the ELF file.
+ *
+ * This MUST be in sync with what the tools generate. We expose
+ * for the tools the 'struct xsplice_patch_func' which does not have
+ * platform specific entries.
+ */
+#if BITS_PER_LONG == 64
+#define XSPLICE_PATCH_FUNC_INTERNAL_SIZE    64
+#else
+#define XSPLICE_PATCH_FUNC_INTERNAL_SIZE    52
+#endif
+
+struct xsplice_patch_func_internal {
+    const char *name;
+    void *new_addr;
+    void *old_addr;
+    uint32_t new_size;
+    uint32_t old_size;
+    uint8_t version;
+    union {
+#ifndef CONFIG_ARM
+        uint8_t undo[8];
+#endif
+        uint8_t pad[31];
+    } u;
+};
 
 /* Convenience define for printk. */
 #define XSPLICE "xsplice: "
 
 int xsplice_op(struct xen_sysctl_xsplice_op *);
+void check_for_xsplice_work(void);
 
 /* Arch hooks. */
 int arch_xsplice_verify_elf(const struct xsplice_elf *elf);
@@ -44,6 +75,21 @@ int arch_xsplice_secure(void *va, unsigned int pages, enum va_type types);
 void arch_xsplice_free_payload(void *va);
 
 void arch_xsplice_init(void);
+
+int arch_xsplice_verify_func(const struct xsplice_patch_func_internal *func);
+/*
+ * These functions are called around the critical region patching live code,
+ * for an architecture to take make appropratie global state adjustments.
+ */
+void arch_xsplice_patching_enter(void);
+void arch_xsplice_patching_leave(void);
+
+void arch_xsplice_apply_jmp(struct xsplice_patch_func_internal *func);
+void arch_xsplice_revert_jmp(const struct xsplice_patch_func_internal *func);
+void arch_xsplice_post_action(void);
+
+void arch_xsplice_mask(void);
+void arch_xsplice_unmask(void);
 #else
 
 #include <xen/errno.h> /* For -ENOSYS */
@@ -52,6 +98,7 @@ static inline int xsplice_op(struct xen_sysctl_xsplice_op *op)
     return -ENOSYS;
 }
 
+static inline void check_for_xsplice_work(void) { };
 #endif /* CONFIG_XSPLICE */
 
 #endif /* __XEN_XSPLICE_H__ */

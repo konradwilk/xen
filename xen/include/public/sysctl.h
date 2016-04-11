@@ -833,6 +833,33 @@ DEFINE_XEN_GUEST_HANDLE(xen_sysctl_featureset_t);
  *     If zero exit with success.
  */
 
+#define XSPLICE_PAYLOAD_VERSION 1
+/*
+ * .xsplice.funcs structure layout defined in the `Payload format`
+ * section in the xSplice design document.
+ *
+ * The size should be exactly 64 bytes (64) or 52 bytes (32).
+ *
+ * We guard this with __XEN__ as toolstacks do not need to use it.
+ */
+#ifdef __XEN__
+struct xsplice_patch_func {
+    const char *name;       /* Name of function to be patched. */
+#if CONFIG_ARM_32
+    uint32_t new_addr;
+    uint32_t old_addr;
+#else
+    uint64_t new_addr;
+    uint64_t old_addr;      /* Can be zero and name will be looked up. */
+#endif
+    uint32_t new_size;
+    uint32_t old_size;
+    uint8_t version;        /* MUST be XSPLICE_PAYLOAD_VERSION. */
+    uint8_t pad[31];        /* MUST be zero filled. */
+};
+typedef struct xsplice_patch_func xsplice_patch_func_t;
+#endif
+
 /*
  * Structure describing an ELF payload. Uniquely identifies the
  * payload. Should be human readable.

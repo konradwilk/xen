@@ -289,8 +289,13 @@ describing the functions to be patched:
 <pre>
 struct xsplice_patch_func {  
     const char *name;  
+#if BITS_PER_LONG == 32  
+    uint32_t new_addr;  
+    uint32_t old_addr;  
+#else  
     uint64_t new_addr;  
     uint64_t old_addr;  
+#endif
     uint32_t new_size;  
     uint32_t old_size;  
     uint8_t version;  
@@ -298,7 +303,8 @@ struct xsplice_patch_func {
 };  
 </pre>
 
-The size of the structure is 64 bytes.
+The size of the structure is 64 bytes or 52 bytes if compiled under 32-bit
+hypervisors.
 
 * `name` is the symbol name of the old function. Only used if `old_addr` is
    zero, otherwise will be used during dynamic linking (when hypervisor loads
