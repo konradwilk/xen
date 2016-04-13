@@ -4054,7 +4054,6 @@ static const struct {
     COMPAT_CALL(platform_op),
     COMPAT_CALL(mmuext_op),
     HYPERCALL(xenpmu_op),
-    HYPERCALL(version_op),
     HYPERCALL(arch_1)
 };
 
