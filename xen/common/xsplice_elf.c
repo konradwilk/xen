@@ -397,8 +397,7 @@ static int xsplice_header_check(const struct xsplice_elf *elf)
         return -EINVAL;
     }
 
-    if ( hdr->e_ident[EI_CLASS] != ELFCLASS64 ||
-         hdr->e_ident[EI_DATA] != ELFDATA2LSB ||
+    if ( hdr->e_ident[EI_DATA] != ELFDATA2LSB ||
          hdr->e_ident[EI_OSABI] != ELFOSABI_SYSV ||
          hdr->e_type != ET_REL ||
          hdr->e_phnum != 0 )
