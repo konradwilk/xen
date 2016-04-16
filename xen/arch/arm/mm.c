@@ -542,7 +542,7 @@ void __init setup_pagetables(unsigned long boot_phys_offset, paddr_t xen_paddr)
         write_pte(xen_xenmap + i, pte);
         /* No flush required here as page table is not hooked in yet. */
     }
-
+    printk("LPAE_ENTRIES=%d, done at %u\n", LPAE_ENTRIES, i);
     pte = pte_of_xenaddr((vaddr_t)xen_xenmap);
     pte.pt.table = 1;
     write_pte(xen_second + second_linear_offset(XEN_VIRT_START), pte);
