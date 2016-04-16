@@ -23,6 +23,7 @@ static void apply_hook(void)
 
 static void revert_hook(void)
 {
+    WARN_ON(1);
     printk(KERN_DEBUG "Hook unloaded.\n");
 }
 
