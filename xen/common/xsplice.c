@@ -14,7 +14,9 @@
 #include <xen/smp.h>
 #include <xen/softirq.h>
 #include <xen/spinlock.h>
+#include <xen/string.h>
 #include <xen/symbols.h>
+#include <xen/virtual_region.h>
 #include <xen/vmap.h>
 #include <xen/wait.h>
 #include <xen/xsplice_elf.h>
@@ -52,6 +54,8 @@ struct payload {
     unsigned int nfuncs;                 /* Nr of functions to patch. */
     const struct xsplice_symbol *symtab; /* All symbols. */
     const char *strtab;                  /* Pointer to .strtab. */
+    struct virtual_region region;        /* symbol, bug.frame patching and
+                                            exception table (x86). */
     unsigned int nsyms;                  /* Nr of entries in .strtab and symbols. */
     char name[XEN_XSPLICE_NAME_SIZE];    /* Name of it. */
 };
@@ -136,6 +140,52 @@ void *xsplice_symbols_lookup_by_name(const char *symname)
     }
 
     return 0;
+}
+
+static const char *xsplice_symbols_lookup(unsigned long addr,
+                                          unsigned long *symbolsize,
+                                          unsigned long *offset,
+                                          char *namebuf)
+{
+    const struct payload *data;
+    unsigned int i;
+    unsigned int best;
+    void *va = (void *)addr;
+    /*
+     * No locking since this list is only ever changed during apply or revert
+     * context.
+     */
+    list_for_each_entry ( data, &applied_list, applied_list )
+    {
+        if ( va < data->text_addr &&
+             va >= (data->text_addr + data->pages * PAGE_SIZE) )
+            continue;
+
+        best = UINT_MAX;
+
+        for ( i = 0; i < data->nsyms; i++ )
+        {
+// XXX: you could then set and compare it to data->nsyms or UINT_MAX.
+            if ( data->symtab[i].value <= va &&
+                 (best == UINT_MAX ||
+                  data->symtab[best].value < data->symtab[i].value) )
+                best = i;
+        }
+
+        if ( best == UINT_MAX )
+            return NULL;
+
+        if ( symbolsize )
+            *symbolsize = data->symtab[best].size;
+        if ( offset )
+            *offset = va - data->symtab[best].value;
+        if ( namebuf )
+            strlcpy(namebuf, data->name, KSYM_NAME_LEN);
+
+        return data->symtab[best].name;
+    }
+
+    return NULL;
 }
 
 static struct payload *find_payload(const char *name)
@@ -350,6 +400,7 @@ static int prepare_payload(struct payload *payload,
     const struct xsplice_elf_sec *sec;
     unsigned int i;
     struct xsplice_patch_func *f;
+    struct virtual_region *region;
 
     sec = xsplice_elf_sec_by_name(elf, ELF_XSPLICE_FUNC);
     ASSERT(sec);
@@ -406,6 +457,13 @@ static int prepare_payload(struct payload *payload,
         }
     }
 
+    /* Setup the virtual region with proper data. */
+    region = &payload->region;
+
+    region->symbols_lookup = xsplice_symbols_lookup;
+    region->start = payload->text_addr;
+    region->end = payload->text_addr + payload->text_size;
+
     return 0;
 }
 
@@ -458,6 +516,7 @@ static int build_symbol_table(struct payload *payload,
         if ( is_payload_symbol(elf, elf->sym + i) )
         {
             symtab[nsyms].name = strtab + strtab_len;
+            symtab[nsyms].size = elf->sym[i].sym->st_size;
             symtab[nsyms].value = (void *)elf->sym[i].sym->st_value;
             symtab[nsyms].new_symbol = 0; /* May be overwritten below. */
             strtab_len += strlcpy(strtab + strtab_len, elf->sym[i].name,
@@ -745,6 +804,7 @@ static int apply_payload(struct payload *data)
     arch_xsplice_patching_leave();
 
     list_add_tail(&data->applied_list, &applied_list);
+    register_virtual_region(&data->region);
 
     return 0;
 }
@@ -763,6 +823,7 @@ static int revert_payload(struct payload *data)
     arch_xsplice_patching_leave();
 
     list_del_init(&data->applied_list);
+    unregister_virtual_region(&data->region);
 
     return 0;
 }
