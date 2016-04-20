@@ -4,17 +4,18 @@
  */
 
 #include "config.h"
-#include <xen/lib.h>
 #include <xen/types.h>
-#include <xen/version.h>
-#include <xen/xsplice.h>
 #include <xen/xsplice_patch.h>
-
+#include <xen/xsplice.h>
+#include <xen/lib.h>
 #include <public/sysctl.h>
 
 static char hello_world_patch_this_fnc[] = "xen_extra_version";
 extern const char *xen_hello_world(void);
 static unsigned int cnt;
+
+/* External symbol. */
+extern const char *xen_extra_version(void);
 
 static void apply_hook(void)
 {
@@ -23,7 +24,6 @@ static void apply_hook(void)
 
 static void revert_hook(void)
 {
-    WARN_ON(1);
     printk(KERN_DEBUG "Hook unloaded.\n");
 }
 
@@ -35,9 +35,7 @@ static void hi_func(void)
 /* If we are sorted we _MUST_ be the last .xsplice.hook section. */
 static void Z_check_fnc(void)
 {
-    printk(KERN_DEBUG "%s: Hi func called %u times\n", __func__, cnt);
-    BUG_ON(cnt == 0 || cnt > 2);
-    cnt = 0; /* Otherwise if you revert, apply, revert the value will be 4! */
+    BUG_ON(cnt != 2);
 }
 
 XSPLICE_LOAD_HOOK(apply_hook);

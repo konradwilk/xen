@@ -120,6 +120,7 @@ extern vaddr_t xenheap_virt_end;
 extern vaddr_t xenheap_virt_start;
 #endif
 
+extern vaddr_t xen_virt_end;
 #ifdef CONFIG_ARM_32
 #define is_xen_heap_page(page) is_xen_heap_mfn(page_to_mfn(page))
 #define is_xen_heap_mfn(mfn) ({                                 \
@@ -229,6 +230,11 @@ static inline paddr_t __virt_to_maddr(vaddr_t va)
 #ifdef CONFIG_ARM_32
 static inline void *maddr_to_virt(paddr_t ma)
 {
+    if ( !is_xen_heap_mfn(ma >> PAGE_SHIFT) )
+    {
+        printk("ma=%#x, xenheap_mfn_start =%#x,  xenheap_mfn_end=%#x\n",
+               (unsigned int)ma, (unsigned int)xenheap_mfn_start, (unsigned int)xenheap_mfn_end);
+    }
     ASSERT(is_xen_heap_mfn(ma >> PAGE_SHIFT));
     ma -= pfn_to_paddr(xenheap_mfn_start);
     return (void *)(unsigned long) ma + XENHEAP_VIRT_START;

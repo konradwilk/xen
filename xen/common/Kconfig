@@ -195,8 +195,8 @@ endmenu
 # Enable/Disable xsplice support
 config XSPLICE
 	bool "xSplice live patching support (TECH PREVIEW)"
-	default n
-	depends on X86 && HAS_BUILD_ID = "y"
+	default y
+	depends on  HAS_BUILD_ID = "y"
 	---help---
 	  Allows a running Xen hypervisor to be dynamically patched using
 	  binary patches without rebooting. This is primarily used to binarily

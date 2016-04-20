@@ -143,6 +143,8 @@ vaddr_t xenheap_virt_end __read_mostly;
 vaddr_t xenheap_virt_start __read_mostly;
 #endif
 
+vaddr_t xen_virt_end;
+
 unsigned long frametable_base_pdx __read_mostly;
 unsigned long frametable_virt_end __read_mostly;
 
@@ -542,7 +544,20 @@ void __init setup_pagetables(unsigned long boot_phys_offset, paddr_t xen_paddr)
         write_pte(xen_xenmap + i, pte);
         /* No flush required here as page table is not hooked in yet. */
     }
+    if ( i < LPAE_ENTRIES )
+        xen_virt_end = XEN_VIRT_START + (i << PAGE_SHIFT);
+    {
+        unsigned int j;
 
+        for (j = i-2; j < LPAE_ENTRIES; j ++ )
+	    {
+            unsigned long mfn = paddr_to_pfn(xen_paddr) + j;
+            unsigned long va = XEN_VIRT_START + (j << PAGE_SHIFT);
+            printk("%u = mfn=0x%lx, va=0%lx\n",j, mfn, va);
+	    }
+    }
+    /* LPAE_ENTRIES=512, done at 278 0x316000 */
+    printk("LPAE_ENTRIES=%d, done at %u %#lx\n", LPAE_ENTRIES, i, xen_virt_end);
     pte = pte_of_xenaddr((vaddr_t)xen_xenmap);
     pte.pt.table = 1;
     write_pte(xen_second + second_linear_offset(XEN_VIRT_START), pte);

@@ -103,6 +103,15 @@ typedef uint64_t	Elf64_Xword;
                       (ehdr).e_ident[EI_MAG2] == ELFMAG2 && \
                       (ehdr).e_ident[EI_MAG3] == ELFMAG3)
 
+/* e_flags */
+#define EF_ARM_EABI_MASK	0xff000000
+#define EF_ARM_EABI_UNKNOWN	0x00000000
+#define EF_ARM_EABI_VER1	0x01000000
+#define EF_ARM_EABI_VER2	0x02000000
+#define EF_ARM_EABI_VER3	0x03000000
+#define EF_ARM_EABI_VER4	0x04000000
+#define EF_ARM_EABI_VER5	0x05000000
+
 /* ELF Header */
 typedef struct elfhdr {
 	unsigned char	e_ident[EI_NIDENT]; /* ELF Identification */
@@ -171,6 +180,7 @@ typedef struct {
 #define EM_PPC		20		/* PowerPC */
 #define EM_PPC64	21		/* PowerPC 64-bit */
 #define EM_ARM		40		/* Advanced RISC Machines ARM */
+#define EM_AARCH64 183
 #define EM_ALPHA	41		/* DEC ALPHA */
 #define EM_SPARCV9	43		/* SPARC version 9 */
 #define EM_ALPHA_EXP	0x9026		/* DEC ALPHA */
@@ -353,11 +363,27 @@ typedef struct {
 #define	ELF64_R_TYPE(info)	((info) & 0xFFFFFFFF)
 #define ELF64_R_INFO(s,t) 	(((s) << 32) + (u_int32_t)(t))
 
-/* x86-64 relocation types. We list only the ones xSplice implements. */
+/* We list only the ones xSplice implements: */
+
+/* x86-64 relocation types. */
 #define R_X86_64_NONE		0	/* No reloc */
 #define R_X86_64_64	    	1	/* Direct 64 bit  */
 #define R_X86_64_PC32		2	/* PC relative 32 bit signed */
 #define R_X86_64_PLT32		4	/* 32 bit PLT address */
+
+/* ARM 64 relocation types. */
+#define R_AARCH64_ABS64     257
+#define R_AARCH64_ABS32     258
+
+/* ARM 32 relocation types. */
+
+#define R_ARM_NONE          0
+#define R_ARM_ABS32         2
+#define R_ARM_REL32         3
+#define R_ARM_CALL          28
+#define R_ARM_JUMP24        29
+#define R_ARM_MOVW_ABS_NC   43
+#define R_ARM_MOVT_ABS      44
 
 /* Program Header */
 typedef struct {

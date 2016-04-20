@@ -11,3 +11,4 @@ obj-y += cache.o
 obj-y += insn.o
 
 obj-$(EARLY_PRINTK) += debug.o
+obj-$(CONFIG_XSPLICE) += xsplice.o
