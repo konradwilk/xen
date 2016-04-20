@@ -40,25 +40,6 @@ void arch_xsplice_unmask(void)
 {
 }
 
-int arch_xsplice_verify_elf(const struct xsplice_elf *elf)
-{
-    return -ENOSYS;
-}
-
-int arch_xsplice_perform_rel(struct xsplice_elf *elf,
-                             const struct xsplice_elf_sec *base,
-                             const struct xsplice_elf_sec *rela)
-{
-    return -ENOSYS;
-}
-
-int arch_xsplice_perform_rela(struct xsplice_elf *elf,
-                              const struct xsplice_elf_sec *base,
-                              const struct xsplice_elf_sec *rela)
-{
-    return -ENOSYS;
-}
-
 int arch_xsplice_secure(const void *va, unsigned int pages, enum va_type type)
 {
     return -ENOSYS;
