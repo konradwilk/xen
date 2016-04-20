@@ -10,3 +10,4 @@ obj-y += smpboot.o
 obj-y += domctl.o
 
 obj-$(EARLY_PRINTK) += debug.o
+obj-$(CONFIG_XSPLICE) += xsplice.o
