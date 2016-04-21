@@ -40,6 +40,10 @@ struct sym_entry {
 	unsigned long long addr;
 	unsigned int len;
 	unsigned char *sym;
+	unsigned char *symbol;
+	unsigned char *filename;
+	unsigned int idx;
+	unsigned char type;
 };
 #define SYMBOL_NAME(s) ((char *)(s)->sym + 1)
 
@@ -47,8 +51,10 @@ static struct sym_entry *table;
 static unsigned int table_size, table_cnt;
 static unsigned long long _stext, _etext, _sinittext, _einittext, _sextratext, _eextratext;
 static int all_symbols = 0;
+static int extra_sorted = 0;
 static char symbol_prefix_char = '\0';
 static enum { fmt_bsd, fmt_sysv } input_format;
+static int compare_name(const void *p1, const void *p2);
 
 int token_profit[0x10000];
 
@@ -79,6 +85,7 @@ static int read_symbol(FILE *in, struct sym_entry *s)
 	char *sym, stype;
 	static enum { symbol, single_source, multi_source } last;
 	static char *filename;
+	unsigned int len;
 	int rc = -1;
 
 	switch (input_format) {
@@ -165,18 +172,29 @@ static int read_symbol(FILE *in, struct sym_entry *s)
 
 	/* include the type field in the symbol name, so that it gets
 	 * compressed together */
-	s->len = strlen(str) + 1;
+	s->len = len = strlen(str) + 1;
 	if (islower(stype) && filename)
 		s->len += strlen(filename) + 1;
 	s->sym = malloc(s->len + 1);
+	if (extra_sorted)
+		s->symbol = malloc(len + 1);
 	sym = SYMBOL_NAME(s);
 	if (islower(stype) && filename) {
 		sym = stpcpy(sym, filename);
 		*sym++ = '#';
-	}
-	strcpy(sym, str);
-	s->sym[0] = stype;
+		if (extra_sorted) {
+			s->filename = malloc(strlen(filename) + 1);
+			strcpy((char *)s->filename, filename);
+		}
+	} else
+		s->filename = NULL;
 
+	strcpy(sym, str);
+	if (extra_sorted) {
+		strcpy((char *)s->symbol, str);
+		s->type = stype; /* As s->sym[0] ends mangled. */
+	}
+	s->sym[0] = stype;
 	rc = 0;
 
  skip_tail:
@@ -276,6 +294,36 @@ static int expand_symbol(unsigned char *data, int len, char *result)
 	return total;
 }
 
+/* Sort by symbol names, then filename, and lastly type. */
+static int compare_name_orig(const void *p1, const void *p2)
+{
+	const struct sym_entry *sym1 = p1;
+	const struct sym_entry *sym2 = p2;
+	int rc;
+
+	rc = strcmp((char *)(sym1->symbol), (char *)(sym2->symbol));
+
+	if (!rc) {
+		if (sym1->filename && sym2->filename)
+			rc = strcmp((char *)sym1->filename, (char *)sym2->filename);
+		else if (!sym1->filename && sym2->filename)
+			rc = -1;
+		else if (sym1->filename && !sym2->filename)
+			rc = 1;
+
+		if (!rc) {
+			if (sym1->type < sym2->type)
+				rc = -1;
+			else if (sym1->type > sym2->type)
+				rc = 1;
+			else
+				rc = 0;
+		}
+	}
+
+	return rc;
+}
+
 static void write_src(void)
 {
 	unsigned int i, k, off;
@@ -334,7 +382,6 @@ static void write_src(void)
 		printf("\t.long\t%d\n", markers[i]);
 	printf("\n");
 
-	free(markers);
 
 	output_label("symbols_token_table");
 	off = 0;
@@ -350,6 +397,40 @@ static void write_src(void)
 	for (i = 0; i < 256; i++)
 		printf("\t.short\t%d\n", best_idx[i]);
 	printf("\n");
+
+	if (!extra_sorted) {
+		free(markers);
+		return;
+	}
+
+	/* Sorted by original symbol names, filename, and lastly type. */
+	qsort(table, table_cnt, sizeof(*table), compare_name_orig);
+
+	/* Lookup table to symbols_addresses (or symbols_offsets).*/
+	output_label("symbols_addresses_index_sorted");
+	for (i = 0; i < table_cnt; i++) {
+		printf("\t.long\t%d\n", table[i].idx);
+	}
+	printf("\n");
+
+	output_label("symbols_names_sorted");
+	off = 0;
+	for (i = 0; i < table_cnt; i++) {
+		if ((i & 0xFF) == 0)
+			markers[i >> 8] = off;
+		printf("\t.byte 0x%02x", table[i].len);
+		for (k = 0; k < table[i].len; k++)
+			printf(", 0x%02x", table[i].sym[k]);
+		printf("\n");
+		off += table[i].len + 1;
+	}
+	printf("\n");
+	output_label("symbols_markers_sorted");
+	for (i = 0; i < ((table_cnt + 255) >> 8); i++)
+		printf("\t.long\t%d\n", markers[i]);
+	printf("\n");
+
+	free(markers);
 }
 
 
@@ -409,7 +490,7 @@ static void compress_symbols(unsigned char *str, int idx)
 
 		len = table[i].len;
 		p1 = table[i].sym;
-
+		table[i].idx = i;
 		/* find the token on the symbol */
 		p2 = memmem_pvt(p1, len, str, 2);
 		if (!p2) continue;
@@ -561,6 +642,8 @@ int main(int argc, char **argv)
 				input_format = fmt_sysv;
 			else if (strcmp(argv[i], "--sort") == 0)
 				unsorted = true;
+			else if (strcmp(argv[i], "--add-extra-sorted") == 0)
+				extra_sorted = 1;
 			else if (strcmp(argv[i], "--warn-dup") == 0)
 				warn_dup = true;
 			else

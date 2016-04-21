@@ -31,6 +31,12 @@ extern const unsigned long symbols_addresses[];
 extern const unsigned int symbols_num_syms;
 extern const u8 symbols_names[];
 
+#ifdef CONFIG_FAST_SYMBOL_LOOKUP
+extern const u8 symbols_names_sorted[];
+extern const unsigned int symbols_addresses_index_sorted[];
+extern const unsigned int symbols_markers_sorted[];
+#endif
+
 extern const u8 symbols_token_table[];
 extern const u16 symbols_token_index[];
 
@@ -38,13 +44,13 @@ extern const unsigned int symbols_markers[];
 
 /* expand a compressed symbol data into the resulting uncompressed string,
    given the offset to where the symbol is in the compressed stream */
-static unsigned int symbols_expand_symbol(unsigned int off, char *result)
+static unsigned int symbols_expand_symbol(const u8 *array, unsigned int off, char *result)
 {
     int len, skipped_first = 0;
     const u8 *tptr, *data;
 
     /* get the compressed symbol length from the first symbol byte */
-    data = &symbols_names[off];
+    data = array + off;
     len = *data;
     data++;
 
@@ -77,14 +83,19 @@ static unsigned int symbols_expand_symbol(unsigned int off, char *result)
 
 /* find the offset on the compressed stream given and index in the
  * symbols array */
-static unsigned int get_symbol_offset(unsigned long pos)
+static unsigned int get_symbol_offset(unsigned long pos, bool_t sorted)
 {
     const u8 *name;
     int i;
 
     /* use the closest marker we have. We have markers every 256 positions,
      * so that should be close enough */
-    name = &symbols_names[ symbols_markers[pos>>8] ];
+#ifdef CONFIG_FAST_SYMBOL_LOOKUP
+    if (sorted)
+        name = &symbols_names_sorted[ symbols_markers_sorted[pos>>8] ];
+    else
+#endif
+        name = &symbols_names[ symbols_markers[pos>>8] ];
 
     /* sequentially scan all the symbols up to the point we're searching for.
      * Every symbol is stored in a [<len>][<len> bytes of data] format, so we
@@ -92,6 +103,11 @@ static unsigned int get_symbol_offset(unsigned long pos)
      * wish to skip */
     for(i = 0; i < (pos&0xFF); i++)
         name = name + (*name) + 1;
+
+#ifdef CONFIG_FAST_SYMBOL_LOOKUP
+    if (sorted)
+        return name - symbols_names_sorted;
+#endif
 
     return name - symbols_names;
 }
@@ -136,7 +152,7 @@ const char *symbols_lookup(unsigned long addr,
         --low;
 
         /* Grab name */
-    symbols_expand_symbol(get_symbol_offset(low), namebuf);
+    symbols_expand_symbol(symbols_names, get_symbol_offset(low, 0), namebuf);
 
     /* Search for next non-aliased symbol */
     for (i = low + 1; i < symbols_num_syms; i++) {
@@ -195,10 +211,10 @@ int xensyms_read(uint32_t *symnum, char *type,
         next_offset = next_symbol = 0;
     if ( next_symbol != *symnum )
         /* Non-sequential access */
-        next_offset = get_symbol_offset(*symnum);
+        next_offset = get_symbol_offset(*symnum, 0);
 
     *type = symbols_get_symbol_type(next_offset);
-    next_offset = symbols_expand_symbol(next_offset, name);
+    next_offset = symbols_expand_symbol(symbols_names, next_offset, name);
     *address = symbols_address(*symnum);
 
     next_symbol = ++*symnum;
@@ -208,8 +224,51 @@ int xensyms_read(uint32_t *symnum, char *type,
     return 0;
 }
 
+#ifdef CONFIG_FAST_SYMBOL_LOOKUP
 void *symbols_lookup_by_name(const char *symname)
 {
+    char namebuf[KSYM_NAME_LEN + 1];
+    unsigned long low, high;
+    static const char *filename_token = "#";
+
+    if ( *symname == '\0' )
+        return NULL;
+
+    /* Unsupported search for filename in symbol right now. */
+    if ( strpbrk(symname, filename_token) )
+        return NULL;
+
+    low = 0;
+    high = symbols_num_syms;
+    while ( low < high )
+    {
+        unsigned long mid = low + ((high - low) / 2);
+        unsigned long offset;
+        const char *p;
+        int rc;
+
+        offset = get_symbol_offset(mid, 1);
+        (void)symbols_expand_symbol(symbols_names_sorted, offset, namebuf);
+        /* Format is: [filename]#<symbol>. symbols_expand_symbol eats type.*/
+        p = strpbrk((const char *)namebuf, filename_token);
+        if ( !p )
+            p = namebuf;
+        else
+            p++; /* Skip # */
+        rc = strcmp(symname, p);
+        if ( rc < 0 )
+            high = mid;
+        else if ( rc > 0 )
+            low = mid + 1;
+        else
+            return (void *)symbols_address(symbols_addresses_index_sorted[mid]);
+    }
+    return NULL;
+}
+
+#else
+void *symbols_lookup_by_name(const char *symname)
+ {
     char name[KSYM_NAME_LEN + 1];
     uint32_t symnum = 0;
     char type;
@@ -231,7 +290,7 @@ void *symbols_lookup_by_name(const char *symname)
 
     return NULL;
 }
-
+#endif
 /*
  * Local variables:
  * mode: C
