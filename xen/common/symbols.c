@@ -31,6 +31,10 @@ extern const unsigned long symbols_addresses[];
 extern const unsigned int symbols_num_syms;
 extern const u8 symbols_names[];
 
+#ifdef CONFIG_FAST_SYMBOL_LOOKUP
+extern const struct symbol_offset symbols_sorted_offsets[];
+#endif
+
 extern const u8 symbols_token_table[];
 extern const u16 symbols_token_index[];
 
@@ -208,8 +212,45 @@ int xensyms_read(uint32_t *symnum, char *type,
     return 0;
 }
 
+#ifdef CONFIG_FAST_SYMBOL_LOOKUP
 void *symbols_lookup_by_name(const char *symname)
 {
+    char namebuf[KSYM_NAME_LEN + 1];
+    unsigned long low, high;
+    static const char *filename_token = "#";
+
+    if ( *symname == '\0' )
+        return NULL;
+
+    /* Unsupported search for filename in symbol right now. */
+    if ( strpbrk(symname, filename_token) )
+        return NULL;
+
+    low = 0;
+    high = symbols_num_syms;
+    while ( low < high )
+    {
+        unsigned long mid = low + ((high - low) / 2);
+        const struct symbol_offset *s;
+        int rc;
+
+        s = &symbols_sorted_offsets[mid];
+        (void)symbols_expand_symbol(s->stream, namebuf);
+        /* Format is: [filename]#<symbol>. symbols_expand_symbol eats type.*/
+        rc = strcmp(symname, namebuf);
+        if ( rc < 0 )
+            high = mid;
+        else if ( rc > 0 )
+            low = mid + 1;
+        else
+            return (void *)symbols_address(s->addr);
+    }
+    return NULL;
+}
+
+#else
+void *symbols_lookup_by_name(const char *symname)
+ {
     char name[KSYM_NAME_LEN + 1];
     uint32_t symnum = 0;
     char type;
@@ -232,6 +273,7 @@ void *symbols_lookup_by_name(const char *symname)
     return NULL;
 }
 
+#endif
 /*
  * Local variables:
  * mode: C
