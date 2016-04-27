@@ -32,6 +32,7 @@ obj-y += vuart.o
 obj-y += hvm.o
 obj-y += device.o
 obj-y += decode.o
+obj-$(CONFIG_XSPLICE) += xsplice.o
 
 #obj-bin-y += ....o
 
