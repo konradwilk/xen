@@ -10,7 +10,8 @@ int arch_xsplice_verify_elf(const struct xsplice_elf *elf)
 {
     const Elf_Ehdr *hdr = elf->hdr;
 
-    if ( hdr->e_machine != EM_AARCH64 )
+    if ( hdr->e_machine != EM_AARCH64 ||
+         hdr->e_ident[EI_CLASS] != ELFCLASS64 )
     {
         dprintk(XENLOG_ERR, XSPLICE "%s: Unsupported ELF Machine type!\n",
                 elf->name);
