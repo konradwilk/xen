@@ -95,7 +95,7 @@ acpi_os_map_memory(acpi_physical_address phys, acpi_size size)
 		if ( !((phys + size - 1) >> 20) )
 			return __va(phys);
 		return __vmap(&mfn, PFN_UP(offs + size), 1, 1,
-			      PAGE_HYPERVISOR_NOCACHE) + offs;
+			      PAGE_HYPERVISOR_NOCACHE, VMAP_DEFAULT) + offs;
 	}
 	return __acpi_map_table(phys, size);
 }
