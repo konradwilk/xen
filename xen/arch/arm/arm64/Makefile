@@ -8,5 +8,6 @@ obj-y += vfp.o
 obj-y += smpboot.o
 obj-y += domctl.o
 obj-y += cache.o
+obj-y += insn.o
 
 obj-$(EARLY_PRINTK) += debug.o
