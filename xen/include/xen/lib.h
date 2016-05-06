@@ -152,4 +152,6 @@ void dump_execstate(struct cpu_user_regs *);
 
 void init_constructors(void);
 
+void *current_text_addr(void);
+
 #endif /* __LIB_H__ */
