@@ -46,8 +46,10 @@ static inline int mm_locked_by_me(mm_lock_t *l)
     return (l->lock.recurse_cpu == current->processor);
 }
 
-/* If you see this crash, the numbers printed are lines in this file 
- * where the offending locks are declared. */
+/*
+ * If you see this crash, the numbers printed are order levels defined
+ * in this file.
+ */
 #define __check_lock_level(l)                           \
 do {                                                    \
     if ( unlikely(__get_lock_level() > (l)) )           \
@@ -152,12 +154,12 @@ static inline void mm_read_unlock(mm_rwlock_t *l)
 /* This wrapper uses the line number to express the locking order below */
 #define declare_mm_lock(name)                                                 \
     static inline void mm_lock_##name(mm_lock_t *l, const char *func, int rec)\
-    { _mm_lock(l, func, __LINE__, rec); }
+    { _mm_lock(l, func, MM_LOCK_ORDER_##name, rec); }
 #define declare_mm_rwlock(name)                                               \
     static inline void mm_write_lock_##name(mm_rwlock_t *l, const char *func) \
-    { _mm_write_lock(l, func, __LINE__); }                                    \
+    { _mm_write_lock(l, func, MM_LOCK_ORDER_##name); }                                    \
     static inline void mm_read_lock_##name(mm_rwlock_t *l)                    \
-    { _mm_read_lock(l, __LINE__); }
+    { _mm_read_lock(l, MM_LOCK_ORDER_##name); }
 /* These capture the name of the calling function */
 #define mm_lock(name, l) mm_lock_##name(l, __func__, 0)
 #define mm_lock_recursive(name, l) mm_lock_##name(l, __func__, 1)
@@ -169,10 +171,10 @@ static inline void mm_read_unlock(mm_rwlock_t *l)
  * to ordering constraints. */
 #define declare_mm_order_constraint(name)                                   \
     static inline void mm_enforce_order_lock_pre_##name(void)               \
-    { _mm_enforce_order_lock_pre(__LINE__); }                               \
+    { _mm_enforce_order_lock_pre(MM_LOCK_ORDER_##name); }                               \
     static inline void mm_enforce_order_lock_post_##name(                   \
                         int *unlock_level, unsigned short *recurse_count)   \
-    { _mm_enforce_order_lock_post(__LINE__, unlock_level, recurse_count); } \
+    { _mm_enforce_order_lock_post(MM_LOCK_ORDER_##name, unlock_level, recurse_count); } \
 
 static inline void mm_unlock(mm_lock_t *l)
 {
@@ -201,10 +203,19 @@ static inline void mm_enforce_order_unlock(int unlock_level,
 
 /************************************************************************
  *                                                                      *
- * To avoid deadlocks, these locks _MUST_ be taken in the order they're *
- * declared in this file.  The locking functions will enforce this.     *
+ * To avoid deadlocks, these locks _MUST_ be taken in the order listed  *
+ * below.  The locking functions will enforce this.                     *
  *                                                                      *
  ************************************************************************/
+
+#define MM_LOCK_ORDER_nestedp2m              10000
+#define MM_LOCK_ORDER_p2m                    20000
+#define MM_LOCK_ORDER_altp2mlist             30000
+#define MM_LOCK_ORDER_altp2m                 40000
+#define MM_LOCK_ORDER_per_page_sharing       50000
+#define MM_LOCK_ORDER_pod                    60000
+#define MM_LOCK_ORDER_page_alloc             70000
+#define MM_LOCK_ORDER_paging                 80000
 
 /* Nested P2M lock (per-domain)
  *
