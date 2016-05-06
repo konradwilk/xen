@@ -611,20 +611,34 @@ void vcpu_end_shutdown_deferral(struct vcpu *v);
  * from any processor.
  */
 void __domain_crash(struct domain *d);
+#ifdef NDEBUG
+#define domain_crash(d) do {                                              \
+    printk("domain_crash called from %p\n", current_text_addr());         \
+    __domain_crash(d);                                                    \
+} while (0)
+#else
 #define domain_crash(d) do {                                              \
     printk("domain_crash called from %s:%d\n", __FILE__, __LINE__);       \
     __domain_crash(d);                                                    \
 } while (0)
+#endif
 
 /*
  * Mark current domain as crashed and synchronously deschedule from the local
  * processor. This function never returns.
  */
 void noreturn __domain_crash_synchronous(void);
+#ifdef NDEBUG
+#define domain_crash_synchronous() do {                                   \
+    printk("domain_crash_sync called from %p\n", current_text_addr());    \
+    __domain_crash_synchronous();                                         \
+} while (0)
+#else
 #define domain_crash_synchronous() do {                                   \
     printk("domain_crash_sync called from %s:%d\n", __FILE__, __LINE__);  \
     __domain_crash_synchronous();                                         \
 } while (0)
+#endif
 
 /*
  * Called from assembly code, with an optional address to help indicate why
