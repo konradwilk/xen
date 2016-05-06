@@ -108,6 +108,15 @@ struct acpi_atsr_unit *acpi_find_matched_atsr_unit(const struct pci_dev *);
 
 #define DMAR_OPERATION_TIMEOUT MILLISECS(1000)
 
+#ifdef NDEBUG
+#define IOMMU_WAIT_OP_PANIC \
+    panic("%p: DMAR hardware is malfunctional", current_text_addr());
+#else
+#define IOMMU_WAIT_OP_PANIC \
+    panic("%s:%d:%s: DMAR hardware is malfunctional",  \
+          __FILE__, __LINE__, __func__);
+#endif
+
 #define IOMMU_WAIT_OP(iommu, offset, op, cond, sts) \
 do {                                                \
     s_time_t start_time = NOW();                    \
@@ -117,8 +126,7 @@ do {                                                \
             break;                                  \
         if ( NOW() > start_time + DMAR_OPERATION_TIMEOUT ) {    \
             if ( !kexecing )                                    \
-                panic("%s:%d:%s: DMAR hardware is malfunctional",\
-                      __FILE__, __LINE__, __func__);            \
+                IOMMU_WAIT_OP_PANIC                             \
             else                                                \
                 break;                                          \
         }                                                       \
