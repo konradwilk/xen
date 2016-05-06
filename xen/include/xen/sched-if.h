@@ -175,7 +175,7 @@ struct scheduler {
 };
 
 #define REGISTER_SCHEDULER(x) static const struct scheduler *x##_entry \
-  __used_section(".data.schedulers") = &x;
+  __used_section(".data..schedulers") = &x;
 
 struct cpupool
 {

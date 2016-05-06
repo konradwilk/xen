@@ -52,7 +52,7 @@ SECTIONS
        *(.text.cold)
        *(.text.unlikely)
        *(.fixup)
-       *(.text.kexec)
+       *(.text..kexec)
        *(.gnu.warning)
        _etext = .;             /* End of text section */
   } :text = 0x9090
@@ -207,11 +207,11 @@ SECTIONS
 
   __2M_rwdata_start = .;       /* Start of 2M superpages, mapped RW. */
   . = ALIGN(SMP_CACHE_BYTES);
-  .data.read_mostly : {
-       *(.data.read_mostly)
+  .data..read_mostly : {
+       *(.data..read_mostly)
        . = ALIGN(8);
        __start_schedulers_array = .;
-       *(.data.schedulers)
+       *(.data..schedulers)
        __end_schedulers_array = .;
        *(.data.rel.ro)
        *(.data.rel.ro.*)
@@ -219,7 +219,7 @@ SECTIONS
 
   .data : {                    /* Data */
        . = ALIGN(PAGE_SIZE);
-       *(.data.page_aligned)
+       *(.data..page_aligned)
        *(.data)
        *(.data.rel)
        *(.data.rel.*)
@@ -229,15 +229,15 @@ SECTIONS
   .bss : {                     /* BSS */
        . = ALIGN(STACK_SIZE);
        __bss_start = .;
-       *(.bss.stack_aligned)
+       *(.bss..stack_aligned)
        . = ALIGN(PAGE_SIZE);
-       *(.bss.page_aligned*)
+       *(.bss..page_aligned*)
        *(.bss)
        . = ALIGN(SMP_CACHE_BYTES);
        __per_cpu_start = .;
-       *(.bss.percpu)
+       *(.bss..percpu)
        . = ALIGN(SMP_CACHE_BYTES);
-       *(.bss.percpu.read_mostly)
+       *(.bss..percpu.read_mostly)
        . = ALIGN(SMP_CACHE_BYTES);
        __per_cpu_data_end = .;
        __bss_end = .;

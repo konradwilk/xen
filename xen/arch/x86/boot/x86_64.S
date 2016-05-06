@@ -51,7 +51,7 @@ GLOBAL(gdt_descr)
 GLOBAL(stack_start)
         .quad   cpu0_stack
 
-        .section .data.page_aligned, "aw", @progbits
+        .section .data..page_aligned, "aw", @progbits
         .align PAGE_SIZE, 0
 GLOBAL(boot_cpu_gdt_table)
         .quad 0x0000000000000000     /* unused */

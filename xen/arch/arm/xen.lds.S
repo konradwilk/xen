@@ -74,11 +74,11 @@ SECTIONS
 
   .data : {                    /* Data */
        . = ALIGN(PAGE_SIZE);
-       *(.data.page_aligned)
+       *(.data..page_aligned)
        *(.data)
        . = ALIGN(8);
        __start_schedulers_array = .;
-       *(.data.schedulers)
+       *(.data..schedulers)
        __end_schedulers_array = .;
        *(.data.rel)
        *(.data.rel.*)
@@ -97,7 +97,7 @@ SECTIONS
        *(.ex_table.pre)
        __stop___pre_ex_table = .;
 
-       *(.data.read_mostly)
+       *(.data..read_mostly)
        *(.data.rel.ro)
        *(.data.rel.ro.*)
   } :text
@@ -173,15 +173,15 @@ SECTIONS
 
   .bss : {                     /* BSS */
        __bss_start = .;
-       *(.bss.stack_aligned)
+       *(.bss..stack_aligned)
        . = ALIGN(PAGE_SIZE);
-       *(.bss.page_aligned)
+       *(.bss..page_aligned)
        *(.bss)
        . = ALIGN(SMP_CACHE_BYTES);
        __per_cpu_start = .;
-       *(.bss.percpu)
+       *(.bss..percpu)
        . = ALIGN(SMP_CACHE_BYTES);
-       *(.bss.percpu.read_mostly)
+       *(.bss..percpu.read_mostly)
        . = ALIGN(SMP_CACHE_BYTES);
        __per_cpu_data_end = .;
        __bss_end = .;
