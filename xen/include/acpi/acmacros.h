@@ -422,7 +422,11 @@
  * Ascii error messages can be configured out
  */
 #ifndef ACPI_NO_ERROR_MESSAGES
+#ifdef NDEBUG
+#define AE_INFO                         _acpi_module_name, current_text_addr()
+#else
 #define AE_INFO                         _acpi_module_name, __LINE__
+#endif
 
 /*
  * Error reporting. Callers module and line number are inserted by AE_INFO,

@@ -174,6 +174,24 @@ acpi_ut_debug_print_raw(u32 requested_debug_level,
 			u32 component_id,
 			char *format, ...) ACPI_PRINTF_LIKE(6);
 
+#ifdef NDEBUG
+void ACPI_INTERNAL_VAR_XFACE
+acpi_ut_error(const char *module_name,
+	      void *addr, char *format, ...) ACPI_PRINTF_LIKE(3);
+
+void ACPI_INTERNAL_VAR_XFACE
+acpi_ut_exception(const char *module_name,
+		  void *addr,
+		  acpi_status status, char *format, ...) ACPI_PRINTF_LIKE(4);
+
+void ACPI_INTERNAL_VAR_XFACE
+acpi_ut_warning(const char *module_name,
+		void *addr, char *format, ...) ACPI_PRINTF_LIKE(3);
+
+void ACPI_INTERNAL_VAR_XFACE
+acpi_ut_info(const char *module_name,
+	     void *addr, char *format, ...) ACPI_PRINTF_LIKE(3);
+#else
 void ACPI_INTERNAL_VAR_XFACE
 acpi_ut_error(const char *module_name,
 	      u32 line_number, char *format, ...) ACPI_PRINTF_LIKE(3);
@@ -190,6 +208,7 @@ acpi_ut_warning(const char *module_name,
 void ACPI_INTERNAL_VAR_XFACE
 acpi_ut_info(const char *module_name,
 	     u32 line_number, char *format, ...) ACPI_PRINTF_LIKE(3);
+#endif
 
 /*
  * utmisc

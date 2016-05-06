@@ -134,6 +134,51 @@ const char *__init acpi_ut_validate_exception(acpi_status status)
  *
  ******************************************************************************/
 
+#ifdef NDEBUG
+void ACPI_INTERNAL_VAR_XFACE __init
+acpi_ut_error(const char *module_name, void *addr, char *format, ...)
+{
+	va_list args;
+
+	acpi_os_printf("ACPI Error (%s-%p): ", module_name, addr);
+
+	va_start(args, format);
+	acpi_os_vprintf(format, args);
+	acpi_os_printf(" [%X]\n", ACPI_CA_VERSION);
+	va_end(args);
+}
+
+void ACPI_INTERNAL_VAR_XFACE __init
+acpi_ut_warning(const char *module_name, void *addr, char *format, ...)
+{
+	va_list args;
+
+	acpi_os_printf("ACPI Warning (%s-%p): ", module_name, addr);
+
+	va_start(args, format);
+	acpi_os_vprintf(format, args);
+	acpi_os_printf(" [%X]\n", ACPI_CA_VERSION);
+	va_end(args);
+	va_end(args);
+}
+
+void ACPI_INTERNAL_VAR_XFACE __init
+acpi_ut_info(const char *module_name, void *addr, char *format, ...)
+{
+	va_list args;
+
+	/*
+	 * Removed module_name, line_number, and acpica version, not needed
+	 * for info output
+	 */
+	acpi_os_printf("ACPI: ");
+
+	va_start(args, format);
+	acpi_os_vprintf(format, args);
+	acpi_os_printf("\n");
+	va_end(args);
+}
+#else
 void ACPI_INTERNAL_VAR_XFACE __init
 acpi_ut_error(const char *module_name, u32 line_number, char *format, ...)
 {
@@ -177,3 +222,4 @@ acpi_ut_info(const char *module_name, u32 line_number, char *format, ...)
 	acpi_os_printf("\n");
 	va_end(args);
 }
+#endif
