@@ -274,6 +274,16 @@ L:	minios-devel@lists.xenproject.org
 T:	git git://xenbits.xen.org/mini-os.git
 F:	config/MiniOS.mk
 
+LIVE PATCH
+M:  Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+M:  Ross Lagerwall <ross.lagerwall@citrix.com>
+S:  Supported
+F:  docs/misc/livepatch.markdown
+F:  tools/misc/xen-livepatch.c
+F:  xen/arch/*/livepatch*
+F:  xen/common/livepatch*
+F:  xen/include/xen/livepatch*
+
 OCAML TOOLS
 M:	David Scott <dave@recoil.org>
 S:	Supported
@@ -469,16 +479,6 @@ F:  tools/flask/
 F:  xen/include/xsm/
 F:  xen/xsm/
 F:  docs/misc/xsm-flask.txt
-
-XSPLICE
-M:  Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-M:  Ross Lagerwall <ross.lagerwall@citrix.com>
-S:  Supported
-F:  docs/misc/xsplice.markdown
-F:  tools/misc/xen-xsplice.c
-F:  xen/arch/*/xsplice*
-F:  xen/common/xsplice*
-F:  xen/include/xen/xsplice*
 
 THE REST
 M:	Andrew Cooper <andrew.cooper3@citrix.com>
