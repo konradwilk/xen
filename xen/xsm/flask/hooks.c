@@ -814,9 +814,9 @@ static int flask_sysctl(int cmd)
     case XEN_SYSCTL_get_cpu_featureset:
         return domain_has_xen(current->domain, XEN2__GET_CPU_FEATURESET);
 
-    case XEN_SYSCTL_xsplice_op:
+    case XEN_SYSCTL_live_patch_op:
         return avc_current_has_perm(SECINITSID_XEN, SECCLASS_XEN2,
-                                    XEN2__XSPLICE_OP, NULL);
+                                    XEN2__LIVE_PATCH_OP, NULL);
 
     default:
         printk("flask_sysctl: Unknown op %d\n", cmd);

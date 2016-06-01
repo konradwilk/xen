@@ -2,14 +2,14 @@
  * Copyright (C) 2016 Citrix Systems R&D Ltd.
  */
 
-#ifndef __XEN_XSPLICE_ELF_H__
-#define __XEN_XSPLICE_ELF_H__
+#ifndef __XEN_LIVE_PATCH_ELF_H__
+#define __XEN_LIVE_PATCH_ELF_H__
 
 #include <xen/types.h>
 #include <xen/elfstructs.h>
 
-/* The following describes an Elf file as consumed by xSplice. */
-struct xsplice_elf_sec {
+/* The following describes an Elf file as consumed by Xen Live Patching. */
+struct live_patch_elf_sec {
     const Elf_Shdr *sec;                 /* Hooked up in elf_resolve_sections.*/
     const char *name;                    /* Human readable name hooked in
                                             elf_resolve_section_names. */
@@ -19,33 +19,34 @@ struct xsplice_elf_sec {
                                             Done by load_payload_data. */
 };
 
-struct xsplice_elf_sym {
+struct live_patch_elf_sym {
     const Elf_Sym *sym;
     const char *name;
 };
 
-struct xsplice_elf {
+struct live_patch_elf {
     const char *name;                    /* Pointer to payload->name. */
     size_t len;                          /* Length of the ELF file. */
     const Elf_Ehdr *hdr;                 /* ELF file. */
-    struct xsplice_elf_sec *sec;         /* Array of sections, allocated by us. */
-    struct xsplice_elf_sym *sym;         /* Array of symbols , allocated by us. */
+    struct live_patch_elf_sec *sec;      /* Array of sections, allocated by us. */
+    struct live_patch_elf_sym *sym;      /* Array of symbols , allocated by us. */
     unsigned int nsym;
-    const struct xsplice_elf_sec *symtab;/* Pointer to .symtab section - aka to
+    const struct live_patch_elf_sec *symtab;/* Pointer to .symtab section - aka to
                                             sec[symtab_idx]. */
-    const struct xsplice_elf_sec *strtab;/* Pointer to .strtab section. */
+    const struct live_patch_elf_sec *strtab;/* Pointer to .strtab section. */
     unsigned int symtab_idx;
 };
 
-const struct xsplice_elf_sec *xsplice_elf_sec_by_name(const struct xsplice_elf *elf,
-                                                      const char *name);
-int xsplice_elf_load(struct xsplice_elf *elf, const void *data);
-void xsplice_elf_free(struct xsplice_elf *elf);
+const struct live_patch_elf_sec *
+live_patch_elf_sec_by_name(const struct live_patch_elf *elf,
+                           const char *name);
+int live_patch_elf_load(struct live_patch_elf *elf, const void *data);
+void live_patch_elf_free(struct live_patch_elf *elf);
 
-int xsplice_elf_resolve_symbols(struct xsplice_elf *elf);
-int xsplice_elf_perform_relocs(struct xsplice_elf *elf);
+int live_patch_elf_resolve_symbols(struct live_patch_elf *elf);
+int live_patch_elf_perform_relocs(struct live_patch_elf *elf);
 
-#endif /* __XEN_XSPLICE_ELF_H__ */
+#endif /* __XEN_LIVE_PATCH_ELF_H__ */
 
 /*
  * Local variables:

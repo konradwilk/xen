@@ -28,7 +28,7 @@
 #include <xsm/xsm.h>
 #include <xen/pmstat.h>
 #include <xen/gcov.h>
-#include <xen/xsplice.h>
+#include <xen/live_patch.h>
 
 long do_sysctl(XEN_GUEST_HANDLE_PARAM(xen_sysctl_t) u_sysctl)
 {
@@ -461,8 +461,8 @@ long do_sysctl(XEN_GUEST_HANDLE_PARAM(xen_sysctl_t) u_sysctl)
         ret = tmem_control(&op->u.tmem_op);
         break;
 
-    case XEN_SYSCTL_xsplice_op:
-        ret = xsplice_op(&op->u.xsplice);
+    case XEN_SYSCTL_live_patch_op:
+        ret = live_patch_op(&op->u.live_patch);
         if ( ret != -ENOSYS && ret != -EOPNOTSUPP )
             copyback = 1;
         break;

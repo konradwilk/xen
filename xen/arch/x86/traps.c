@@ -50,7 +50,7 @@
 #include <xen/paging.h>
 #include <xen/virtual_region.h>
 #include <xen/watchdog.h>
-#include <xen/xsplice.h>
+#include <xen/live_patch.h>
 #include <asm/system.h>
 #include <asm/io.h>
 #include <asm/atomic.h>
