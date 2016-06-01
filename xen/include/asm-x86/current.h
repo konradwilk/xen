@@ -86,17 +86,17 @@ static inline struct cpu_info *get_cpu_info(void)
 unsigned long get_stack_trace_bottom(unsigned long sp);
 unsigned long get_stack_dump_bottom (unsigned long sp);
 
-#ifdef CONFIG_XSPLICE
-# define CHECK_FOR_XSPLICE_WORK "call check_for_xsplice_work;"
+#ifdef CONFIG_XLIVE_PATCH
+# define CHECK_FOR_XLIVE_PATCH_WORK "call check_for_xlive_patch_work;"
 #else
-# define CHECK_FOR_XSPLICE_WORK ""
+# define CHECK_FOR_XLIVE_PATCH_WORK ""
 #endif
 
 #define reset_stack_and_jump(__fn)                                      \
     ({                                                                  \
         __asm__ __volatile__ (                                          \
             "mov %0,%%"__OP"sp;"                                        \
-            CHECK_FOR_XSPLICE_WORK                                      \
+            CHECK_FOR_XLIVE_PATCH_WORK                                      \
              "jmp %c1"                                                  \
             : : "r" (guest_cpu_user_regs()), "i" (__fn) : "memory" );   \
         unreachable();                                                  \

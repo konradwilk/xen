@@ -470,15 +470,15 @@ F:  xen/include/xsm/
 F:  xen/xsm/
 F:  docs/misc/xsm-flask.txt
 
-XSPLICE
+XLIVE_PATCH
 M:  Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
 M:  Ross Lagerwall <ross.lagerwall@citrix.com>
 S:  Supported
-F:  docs/misc/xsplice.markdown
-F:  tools/misc/xen-xsplice.c
-F:  xen/arch/*/xsplice*
-F:  xen/common/xsplice*
-F:  xen/include/xen/xsplice*
+F:  docs/misc/xlive_patch.markdown
+F:  tools/misc/xen-live-patch.c
+F:  xen/arch/*/xlive_patch*
+F:  xen/common/xlive_patch*
+F:  xen/include/xen/xlive_patch*
 
 THE REST
 M:	Andrew Cooper <andrew.cooper3@citrix.com>

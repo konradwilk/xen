@@ -7,7 +7,7 @@ subdir-$(CONFIG_XENOPROF) += oprofile
 subdir-y += x86_64
 
 alternative-y := alternative.init.o
-alternative-$(CONFIG_XSPLICE) :=
+alternative-$(CONFIG_XLIVE_PATCH) :=
 obj-bin-y += $(alternative-y)
 obj-y += apic.o
 obj-y += bitops.o
@@ -63,7 +63,7 @@ obj-y += x86_emulate.o
 obj-y += tboot.o
 obj-y += hpet.o
 obj-y += vm_event.o
-obj-$(CONFIG_XSPLICE) += alternative.o xsplice.o
+obj-$(CONFIG_XLIVE_PATCH) += alternative.o xlive_patch.o
 obj-y += xstate.o
 
 obj-$(crash_debug) += gdbstub.o
@@ -80,7 +80,7 @@ else
 notes_phdrs =
 endif
 
-ifdef CONFIG_XSPLICE
+ifdef CONFIG_XLIVE_PATCH
 all_symbols = --all-symbols
 ifdef CONFIG_FAST_SYMBOL_LOOKUP
 all_symbols = --all-symbols --sort-by-name
@@ -95,7 +95,7 @@ $(TARGET): $(TARGET)-syms $(efi-y) boot/mkelf32
 
 .PHONY: tests
 tests:
-	$(MAKE) -f $(BASEDIR)/Rules.mk -C test xsplice
+	$(MAKE) -f $(BASEDIR)/Rules.mk -C test xlive_patch
 
 ALL_OBJS := $(BASEDIR)/arch/x86/boot/built_in.o $(BASEDIR)/arch/x86/efi/built_in.o $(ALL_OBJS)
 
