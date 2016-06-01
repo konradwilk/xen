@@ -5,24 +5,24 @@ CODE_SZ=$(shell nm --defined -S $(1) | grep $(2) | awk '{ print "0x"$$2}')
 
 .PHONY: default
 
-XSPLICE := xen_hello_world.xsplice
-XSPLICE_BYE := xen_bye_world.xsplice
-XSPLICE_REPLACE := xen_replace_world.xsplice
+XHOT_PATCH := xen_hello_world.xhot_patch
+XHOT_PATCH_BYE := xen_bye_world.xhot_patch
+XHOT_PATCH_REPLACE := xen_replace_world.xhot_patch
 
-default: xsplice
+default: xhot_patch
 
-install: xsplice
-	$(INSTALL_DATA) $(XSPLICE) $(DESTDIR)$(DEBUG_DIR)/$(XSPLICE)
-	$(INSTALL_DATA) $(XSPLICE_BYE) $(DESTDIR)$(DEBUG_DIR)/$(XSPLICE_BYE)
-	$(INSTALL_DATA) $(XSPLICE_REPLACE) $(DESTDIR)$(DEBUG_DIR)/$(XSPLICE_REPLACE)
+install: xhot_patch
+	$(INSTALL_DATA) $(XHOT_PATCH) $(DESTDIR)$(DEBUG_DIR)/$(XHOT_PATCH)
+	$(INSTALL_DATA) $(XHOT_PATCH_BYE) $(DESTDIR)$(DEBUG_DIR)/$(XHOT_PATCH_BYE)
+	$(INSTALL_DATA) $(XHOT_PATCH_REPLACE) $(DESTDIR)$(DEBUG_DIR)/$(XHOT_PATCH_REPLACE)
 uninstall:
-	rm -f $(DESTDIR)$(DEBUG_DIR)/$(XSPLICE)
-	rm -f $(DESTDIR)$(DEBUG_DIR)/$(XSPLICE_BYE)
-	rm -f $(DESTDIR)$(DEBUG_DIR)/$(XSPLICE_REPLACE)
+	rm -f $(DESTDIR)$(DEBUG_DIR)/$(XHOT_PATCH)
+	rm -f $(DESTDIR)$(DEBUG_DIR)/$(XHOT_PATCH_BYE)
+	rm -f $(DESTDIR)$(DEBUG_DIR)/$(XHOT_PATCH_REPLACE)
 
 .PHONY: clean
 clean::
-	rm -f *.o .*.o.d *.xsplice config.h
+	rm -f *.o .*.o.d *.xhot_patch config.h
 
 #
 # To compute these values we need the binary files: xen-syms
@@ -38,12 +38,12 @@ config.h: xen_hello_world_func.o
 
 xen_hello_world.o: config.h
 
-.PHONY: $(XSPLICE)
-$(XSPLICE): xen_hello_world_func.o xen_hello_world.o note.o
-	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(XSPLICE) $^
+.PHONY: $(XHOT_PATCH)
+$(XHOT_PATCH): xen_hello_world_func.o xen_hello_world.o note.o
+	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(XHOT_PATCH) $^
 
 #
-# This target is only accessible if CONFIG_XSPLICE is defined, which
+# This target is only accessible if CONFIG_XHOT_PATCH is defined, which
 # depends on $(build_id_linker) being available. Hence we do not
 # need any checks.
 #
@@ -55,31 +55,31 @@ $(XSPLICE): xen_hello_world_func.o xen_hello_world.o note.o
 note.o:
 	$(OBJCOPY) -O binary --only-section=.note.gnu.build-id $(BASEDIR)/xen-syms $@.bin
 	$(OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 \
-		   --rename-section=.data=.xsplice.depends -S $@.bin $@
+		   --rename-section=.data=.xhot_patch.depends -S $@.bin $@
 	rm -f $@.bin
 
 #
-# Extract the build-id of the xen_hello_world.xsplice
+# Extract the build-id of the xen_hello_world.xhot_patch
 # (which xen_bye_world will depend on).
 #
 .PHONY: hello_world_note.o
-hello_world_note.o: $(XSPLICE)
-	$(OBJCOPY) -O binary --only-section=.note.gnu.build-id $(XSPLICE) $@.bin
+hello_world_note.o: $(XHOT_PATCH)
+	$(OBJCOPY) -O binary --only-section=.note.gnu.build-id $(XHOT_PATCH) $@.bin
 	$(OBJCOPY)  -I binary -O elf64-x86-64 -B i386:x86-64 \
-		   --rename-section=.data=.xsplice.depends -S $@.bin $@
+		   --rename-section=.data=.xhot_patch.depends -S $@.bin $@
 	rm -f $@.bin
 
 xen_bye_world.o: config.h
 
-.PHONY: $(XSPLICE_BYE)
-$(XSPLICE_BYE): xen_bye_world_func.o xen_bye_world.o hello_world_note.o
-	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(XSPLICE_BYE) $^
+.PHONY: $(XHOT_PATCH_BYE)
+$(XHOT_PATCH_BYE): xen_bye_world_func.o xen_bye_world.o hello_world_note.o
+	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(XHOT_PATCH_BYE) $^
 
 xen_replace_world.o: config.h
 
-.PHONY: $(XSPLICE_REPLACE)
-$(XSPLICE_REPLACE): xen_replace_world_func.o xen_replace_world.o note.o
-	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(XSPLICE_REPLACE) $^
+.PHONY: $(XHOT_PATCH_REPLACE)
+$(XHOT_PATCH_REPLACE): xen_replace_world_func.o xen_replace_world.o note.o
+	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(XHOT_PATCH_REPLACE) $^
 
-.PHONY: xsplice
-xsplice: $(XSPLICE) $(XSPLICE_BYE) $(XSPLICE_REPLACE)
+.PHONY: xhot_patch
+xhot_patch: $(XHOT_PATCH) $(XHOT_PATCH_BYE) $(XHOT_PATCH_REPLACE)
