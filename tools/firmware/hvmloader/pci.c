@@ -80,7 +80,7 @@ void pci_setup(void)
 {
     uint8_t is_64bar, using_64bar, bar64_relocate = 0;
     uint32_t devfn, bar_reg, cmd, bar_data, bar_data_upper;
-    uint64_t base, bar_sz, bar_sz_upper, mmio_total = 0;
+    uint64_t base, bar_sz, bar_sz_upper, mmio_total = 0, mmio_64bit_total = 0;
     uint32_t vga_devfn = 256;
     uint16_t class, vendor_id, device_id;
     unsigned int bar, pin, link, isa_irq;
@@ -97,6 +97,7 @@ void pci_setup(void)
         uint32_t devfn;
         uint32_t bar_reg;
         uint64_t bar_sz;
+        bool above_4gb;
     } *bars = (struct bars *)scratch_start;
     unsigned int i, nr_bars = 0;
     uint64_t mmio_hole_size = 0;
@@ -265,11 +266,30 @@ void pci_setup(void)
             bars[i].devfn   = devfn;
             bars[i].bar_reg = bar_reg;
             bars[i].bar_sz  = bar_sz;
+            bars[i].above_4gb = false;
 
             if ( ((bar_data & PCI_BASE_ADDRESS_SPACE) ==
                   PCI_BASE_ADDRESS_SPACE_MEMORY) ||
                  (bar_reg == PCI_ROM_ADDRESS) )
-                mmio_total += bar_sz;
+            {
+                /*
+                 * If bigger than 2GB minus emulated devices BAR space and
+                 * APIC space, then don't try to put under 4GB.
+                 */
+                if ( is_64bar && (mmio_total >= GB(2) || bar_sz >=
+                     (GB(2) - HVM_BELOW_4G_MMIO_LENGTH - mmio_total)) )
+                {
+                    mmio_64bit_total += bar_sz;
+                    bars[i].above_4gb = true;
+                    /*
+                     * As this may not trigger now that mmio_total could be
+                     * less than 2GB, so force it.
+                     */
+                    bar64_relocate = 1;
+                }
+                else
+                    mmio_total += bar_sz;
+            }
 
             nr_bars++;
 
@@ -349,7 +369,7 @@ void pci_setup(void)
             pci_mem_start = hvm_info->low_mem_pgend << PAGE_SHIFT;
     }
 
-    if ( mmio_total > (pci_mem_end - pci_mem_start) )
+    if ( mmio_total > (pci_mem_end - pci_mem_start) || bar64_relocate )
     {
         printf("Low MMIO hole not large enough for all devices,"
                " relocating some BARs to 64-bit\n");
@@ -431,7 +451,7 @@ void pci_setup(void)
          * Should either of those two conditions change, this code will break.
          */
         using_64bar = bars[i].is_64bar && bar64_relocate
-            && (mmio_total > (mem_resource.max - mem_resource.base));
+            && ((mmio_total + mmio_64bit_total) > (mem_resource.max - mem_resource.base));
         bar_data = pci_readl(devfn, bar_reg);
 
         if ( (bar_data & PCI_BASE_ADDRESS_SPACE) ==
@@ -451,7 +471,10 @@ void pci_setup(void)
                 resource = &mem_resource;
                 bar_data &= ~PCI_BASE_ADDRESS_MEM_MASK;
             }
-            mmio_total -= bar_sz;
+            if ( bars[i].above_4gb )
+                mmio_64bit_total -= bar_sz;
+            else
+                mmio_total -= bar_sz;
         }
         else
         {
