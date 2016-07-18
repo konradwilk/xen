@@ -99,6 +99,9 @@ $(TARGET)-syms: prelink.o xen.lds $(BASEDIR)/common/symbols-dummy.o
 	    $(@D)/.$(@F).0.o -o $(@D)/.$(@F).1
 	$(NM) -pa --format=sysv $(@D)/.$(@F).1 \
 		| $(BASEDIR)/tools/symbols --sysv --sort >$(@D)/.$(@F).1.S
+	$(NM) -pa --format=sysv $(@D)/.$(@F).1 \
+		| $(BASEDIR)/tools/symbols --xensyms --sysv --sort \
+		>$(@D)/$(@F).map
 	$(MAKE) -f $(BASEDIR)/Rules.mk $(@D)/.$(@F).1.o
 	$(LD) $(LDFLAGS) -T xen.lds -N prelink.o $(build_id_linker) \
 	    $(@D)/.$(@F).1.o -o $@
