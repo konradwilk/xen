@@ -136,8 +136,12 @@ $(TARGET)-syms: prelink.o xen.lds $(BASEDIR)/common/symbols-dummy.o
 		| $(BASEDIR)/tools/symbols $(all_symbols) --sysv --sort --warn-dup \
 		>$(@D)/.$(@F).1.S
 	$(MAKE) -f $(BASEDIR)/Rules.mk $(@D)/.$(@F).1.o
+	$(MAKE) -f $(BASEDIR)/Rules.mk $(@D)/.$(@F).1.o
 	$(LD) $(LDFLAGS) -T xen.lds -N prelink.o $(build_id_linker) \
 	    $(@D)/.$(@F).1.o -o $@
+	$(NM) -pa --format=sysv $(@D)/$(@F) \
+		| $(BASEDIR)/tools/symbols --xensyms --sysv --sort --warn-dup \
+		>$(@D)/$(@F).map
 	rm -f $(@D)/.$(@F).[0-9]*
 
 note.o: $(TARGET)-syms
