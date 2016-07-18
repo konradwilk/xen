@@ -62,6 +62,7 @@ _install: $(TARGET)$(CONFIG_XEN_INSTALL_SUFFIX)
 	ln -f -s $(T)-$(XEN_FULLVERSION)$(Z) $(D)$(BOOT_DIR)/$(T)$(Z)
 	[ -d "$(D)$(DEBUG_DIR)" ] || $(INSTALL_DIR) $(D)$(DEBUG_DIR)
 	$(INSTALL_DATA) $(TARGET)-syms $(D)$(DEBUG_DIR)/$(T)-syms-$(XEN_FULLVERSION)
+	$(INSTALL_DATA) $(TARGET)-syms.map $(D)$(DEBUG_DIR)/$(T)-syms-$(XEN_FULLVERSION).map
 	$(INSTALL_DATA) $(KCONFIG_CONFIG) $(D)$(BOOT_DIR)/$(T)-$(XEN_FULLVERSION).config
 	if [ -r $(TARGET).efi -a -n '$(EFI_DIR)' ]; then \
 		[ -d $(D)$(EFI_DIR) ] || $(INSTALL_DIR) $(D)$(EFI_DIR); \
@@ -91,6 +92,7 @@ _uninstall:
 	rm -f $(D)$(BOOT_DIR)/$(T)-$(XEN_VERSION)$(Z)
 	rm -f $(D)$(BOOT_DIR)/$(T)$(Z)
 	rm -f $(D)$(DEBUG_DIR)/$(T)-syms-$(XEN_FULLVERSION)
+	rm -f $(D)$(DEBUG_DIR)/$(T)-syms-$(XEN_FULLVERSION).map
 	rm -f $(D)$(EFI_DIR)/$(T)-$(XEN_FULLVERSION).efi
 	rm -f $(D)$(EFI_DIR)/$(T)-$(XEN_VERSION).$(XEN_SUBVERSION).efi
 	rm -f $(D)$(EFI_DIR)/$(T)-$(XEN_VERSION).efi
@@ -112,7 +114,7 @@ _clean: delete-unfresh-files
 	$(MAKE) -f $(BASEDIR)/Rules.mk -C arch/$(TARGET_ARCH) clean
 	$(MAKE) -f $(BASEDIR)/tools/kconfig/Makefile.kconfig ARCH=$(ARCH) SRCARCH=$(SRCARCH) clean
 	find . \( -name "*.o" -o -name ".*.d" \) -exec rm -f {} \;
-	rm -f include/asm $(TARGET) $(TARGET).gz $(TARGET).efi $(TARGET)-syms *~ core
+	rm -f include/asm $(TARGET) $(TARGET).gz $(TARGET).efi $(TARGET)-syms $(TARGET)-syms.map *~ core
 	rm -f include/asm-*/asm-offsets.h
 	rm -f .banner
 
