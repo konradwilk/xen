@@ -117,7 +117,7 @@ int xen_build_id_check(const Elf_Note *n, unsigned int n_sz,
     return 0;
 }
 
-static int __init xen_build_init(void)
+int __init xen_build_init(void)
 {
     const Elf_Note *n = __note_gnu_build_id_start;
     unsigned int sz;
@@ -134,7 +134,6 @@ static int __init xen_build_init(void)
 
     return xen_build_id_check(n, sz, &build_id_p, &build_id_len);
 }
-__initcall(xen_build_init);
 #endif
 /*
  * Local variables:

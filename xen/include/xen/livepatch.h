@@ -44,7 +44,7 @@ unsigned long livepatch_symbols_lookup_by_name(const char *symname);
 bool_t is_patch(const void *addr);
 int xen_build_id_check(const Elf_Note *n, unsigned int n_sz,
                        const void **p, unsigned int *len);
-
+void xen_build_init(void);
 /* Arch hooks. */
 int arch_livepatch_verify_elf(const struct livepatch_elf *elf);
 int arch_livepatch_perform_rel(struct livepatch_elf *elf,
