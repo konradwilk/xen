@@ -401,6 +401,7 @@ static int livepatch_header_check(const struct livepatch_elf *elf)
          (hdr->e_ident[EI_OSABI] != ELFOSABI_NONE &&
           hdr->e_ident[EI_OSABI] != ELFOSABI_FREEBSD) ||
          hdr->e_type != ET_REL ||
+         hdr->e_entry ||
          hdr->e_phnum != 0 )
     {
         dprintk(XENLOG_ERR, LIVEPATCH "%s: Invalid ELF payload!\n", elf->name);
