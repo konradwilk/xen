@@ -682,8 +682,7 @@ static int prepare_payload(struct payload *payload,
         region->frame[i].n_bugs = sec->sec->sh_size /
                                   sizeof(*region->frame[i].bugs);
     }
-
-#ifndef CONFIG_ARM
+#if defined(CONFIG_ALTERNATIVE) || defined(CONFIG_X86)
     sec = livepatch_elf_sec_by_name(elf, ".altinstructions");
     if ( sec )
     {
@@ -701,8 +700,14 @@ static int prepare_payload(struct payload *payload,
 
         for ( a = start; a < end; a++ )
         {
+#ifndef CONFIG_ARM
+            /* TODO: Bubble ALT_ORIG_PTR up. */
             const void *instr = &a->instr_offset + a->instr_offset;
             const void *replacement = &a->repl_offset + a->repl_offset;
+#else
+            const void *instr = &a->orig_offset + a->orig_offset;
+            const void *replacement = &a->alt_offset + a->alt_offset;
+#endif
 
             if ( (instr < region->start && instr >= region->end) ||
                  (replacement < region->start && replacement >= region->end) )
@@ -712,9 +717,14 @@ static int prepare_payload(struct payload *payload,
                 return -EINVAL;
             }
         }
+#ifndef CONFIG_ARM
         apply_alternatives_nocheck(start, end);
+#else
+        apply_alternatives(start, sec->sec->sh_size);
+#endif
     }
-
+#endif
+#ifndef CONFIG_ARM
     sec = livepatch_elf_sec_by_name(elf, ".ex_table");
     if ( sec )
     {
