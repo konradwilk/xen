@@ -121,6 +121,7 @@ static int __init xen_build_init(void)
 {
     const Elf_Note *n = __note_gnu_build_id_start;
     unsigned int sz;
+    int rc;
 
     /* --build-id invoked with wrong parameters. */
     if ( __note_gnu_build_id_end <= &n[0] )
@@ -132,7 +133,11 @@ static int __init xen_build_init(void)
 
     sz = (void *)__note_gnu_build_id_end - (void *)n;
 
-    return xen_build_id_check(n, sz, &build_id_p, &build_id_len);
+    rc = xen_build_id_check(n, sz, &build_id_p, &build_id_len);
+    if ( !rc )
+        printk(XENLOG_INFO "build-id: %*phN\n", build_id_len, build_id_p);
+
+    return rc;
 }
 __initcall(xen_build_init);
 #endif
