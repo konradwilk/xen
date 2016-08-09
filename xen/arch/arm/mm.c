@@ -836,6 +836,7 @@ static int create_xen_table(lpae_t *entry)
 enum xenmap_operation {
     INSERT,
     REMOVE,
+    MODIFY,
     RESERVE
 };
 
@@ -877,18 +878,27 @@ static int create_xen_entries(enum xenmap_operation op,
                 }
                 if ( op == RESERVE )
                     break;
+
                 pte = mfn_to_xen_entry(mfn, ai);
                 pte.pt.table = 1;
                 write_pte(&third[third_table_offset(addr)], pte);
                 break;
+            case MODIFY:
             case REMOVE:
                 if ( !third[third_table_offset(addr)].pt.valid )
                 {
-                    printk("create_xen_entries: trying to remove a non-existing mapping addr=%lx\n",
-                           addr);
+                    printk("create_xen_entries: trying to %s a non-existing mapping addr=%lx\n",
+                           op == REMOVE ? "remove" : "modify", addr);
                     return -EINVAL;
                 }
-                pte.bits = 0;
+                if ( op == REMOVE )
+                    pte.bits = 0;
+                else
+                {
+                    pte = third[third_table_offset(addr)];
+                    pte.pt.ro = (ai >> 1) & 0x1;
+                    pte.pt.xn = ai & 0x1;
+                }
                 write_pte(&third[third_table_offset(addr)], pte);
                 break;
             default:
@@ -920,6 +930,13 @@ int populate_pt_range(unsigned long virt, unsigned long mfn,
 void destroy_xen_mappings(unsigned long v, unsigned long e)
 {
     create_xen_entries(REMOVE, v, 0, (e - v) >> PAGE_SHIFT, 0);
+}
+
+void modify_xen_mappings(unsigned long s, unsigned long e, unsigned int flags)
+{
+    /* TODO: #define for ro and nx flags. */
+    ASSERT((flags & 0x3) == flags);
+    create_xen_entries(MODIFY, s, 0, (e - s) >> PAGE_SHIFT, flags);
 }
 
 enum mg { mg_clear, mg_ro, mg_rw, mg_rx };
