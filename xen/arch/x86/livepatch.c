@@ -34,10 +34,6 @@ int arch_verify_insn_length(unsigned long len)
 
 int arch_livepatch_verify_func(const struct livepatch_func *func)
 {
-    /* No NOP patching yet. */
-    if ( !func->new_size )
-        return -EOPNOTSUPP;
-
     if ( func->old_size < PATCH_INSN_SIZE )
         return -EINVAL;
 
@@ -46,18 +42,27 @@ int arch_livepatch_verify_func(const struct livepatch_func *func)
 
 void arch_livepatch_apply_jmp(struct livepatch_func *func)
 {
-    int32_t val;
     uint8_t *old_ptr;
+    uint8_t insn[PATCH_INSN_SIZE];
 
     BUILD_BUG_ON(PATCH_INSN_SIZE > sizeof(func->opaque));
-    BUILD_BUG_ON(PATCH_INSN_SIZE != (1 + sizeof(val)));
 
     old_ptr = func->old_addr;
     memcpy(func->opaque, old_ptr, PATCH_INSN_SIZE);
 
-    *old_ptr++ = 0xe9; /* Relative jump */
-    val = func->new_addr - func->old_addr - PATCH_INSN_SIZE;
-    memcpy(old_ptr, &val, sizeof(val));
+    if ( func->new_size )
+    {
+        int32_t val;
+
+        BUILD_BUG_ON(PATCH_INSN_SIZE != (1 + sizeof(val)));
+
+        insn[0] = 0xe9;
+        val = func->new_addr - func->old_addr - PATCH_INSN_SIZE;
+        memcpy(&insn[1], &val, sizeof(val));
+    } else
+        add_nops(&insn, PATCH_INSN_SIZE);
+
+    memcpy(old_ptr, insn, PATCH_INSN_SIZE);
 }
 
 void arch_livepatch_revert_jmp(const struct livepatch_func *func)
