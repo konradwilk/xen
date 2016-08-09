@@ -70,6 +70,8 @@ struct payload {
     unsigned int nsyms;                  /* Nr of entries in .strtab and symbols. */
     struct livepatch_build_id id;        /* ELFNOTE_DESC(.note.gnu.build-id) of the payload. */
     struct livepatch_build_id dep;       /* ELFNOTE_DESC(.livepatch.depends). */
+    void *bss;                           /* .bss of the payload. */
+    size_t bss_size;                     /* and its size. */
     char name[XEN_LIVEPATCH_NAME_SIZE]; /* Name of it. */
 };
 
@@ -374,7 +376,18 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
                         elf->name, elf->sec[i].name, elf->sec[i].load_addr);
             }
             else
-                memset(elf->sec[i].load_addr, 0, elf->sec[i].sec->sh_size);
+            {
+                /* We expect only one BSS. */
+                if ( payload->bss )
+                {
+                    rc = -EINVAL;
+                    goto out;
+                }
+                payload->bss = elf->sec[i].load_addr;
+                payload->bss_size = elf->sec[i].sec->sh_size;
+
+                memset(payload->bss, 0, payload->bss_size);
+            }
         }
     }
 
@@ -1033,6 +1046,9 @@ static int revert_payload(struct payload *data)
      */
     list_del_rcu(&data->applied_list);
     unregister_virtual_region(&data->region);
+
+    /* And clear the BSS for subsequent operation. */
+    memset(data->bss, 0, data->bss_size);
 
     return 0;
 }
