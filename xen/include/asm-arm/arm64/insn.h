@@ -61,6 +61,8 @@ u32 aarch64_insn_encode_immediate(enum aarch64_insn_imm_type type,
 s32 aarch64_get_branch_offset(u32 insn);
 u32 aarch64_set_branch_offset(u32 insn, s32 offset);
 
+u32 aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr);
+
 /* Wrapper for common code */
 static inline bool insn_is_branch_imm(u32 insn)
 {
