@@ -8,6 +8,7 @@ CODE_SZ=$(shell nm --defined -S $(1) | grep $(2) | awk '{ print "0x"$$2}')
 LIVEPATCH := xen_hello_world.livepatch
 LIVEPATCH_BYE := xen_bye_world.livepatch
 LIVEPATCH_REPLACE := xen_replace_world.livepatch
+LIVEPATCH_FOOBAR := xen_foobar.livepatch
 
 default: livepatch
 
@@ -15,10 +16,13 @@ install: livepatch
 	$(INSTALL_DATA) $(LIVEPATCH) $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH)
 	$(INSTALL_DATA) $(LIVEPATCH_BYE) $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH_BYE)
 	$(INSTALL_DATA) $(LIVEPATCH_REPLACE) $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH_REPLACE)
+	$(INSTALL_DATA) $(LIVEPATCH_FOOBAR) $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH_FOOBAR)
+
 uninstall:
 	rm -f $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH)
 	rm -f $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH_BYE)
 	rm -f $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH_REPLACE)
+	rm -f $(DESTDIR)$(DEBUG_DIR)/$(LIVEPATCH_FOOBAR)
 
 .PHONY: clean
 clean::
@@ -81,5 +85,12 @@ xen_replace_world.o: config.h
 $(LIVEPATCH_REPLACE): xen_replace_world_func.o xen_replace_world.o note.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_REPLACE) $^
 
+xen_foobar.o: config.h
+
+.PHONY: $(LIVEPATCH_FOOBAR)
+$(LIVEPATCH_FOOBAR): xen_foobar.o note.o
+	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_FOOBAR) $^
+
 .PHONY: livepatch
-livepatch: $(LIVEPATCH) $(LIVEPATCH_BYE) $(LIVEPATCH_REPLACE)
+livepatch: $(LIVEPATCH) $(LIVEPATCH_BYE) $(LIVEPATCH_REPLACE) \
+	$(LIVEPATCH_FOOBAR)
