@@ -14,6 +14,7 @@
 #include <asm/nmi.h>
 
 #define PATCH_INSN_SIZE 5
+#define MAX_INSN_SIZE 15
 
 void arch_livepatch_quiesce(void)
 {
@@ -29,8 +30,8 @@ void arch_livepatch_revive(void)
 
 int arch_livepatch_verify_func(const struct livepatch_func *func)
 {
-    /* No NOP patching yet. */
-    if ( !func->new_size )
+    /* If NOPing only do up to maximum instruction size. */
+    if ( !func->new_addr && func->new_size > MAX_INSN_SIZE )
         return -EOPNOTSUPP;
 
     if ( func->old_size < PATCH_INSN_SIZE )
@@ -39,25 +40,48 @@ int arch_livepatch_verify_func(const struct livepatch_func *func)
     return 0;
 }
 
+static size_t get_len(const struct livepatch_func *func)
+{
+    if ( !func->new_addr )
+        return func->new_size;
+
+    return PATCH_INSN_SIZE;
+}
+
 void arch_livepatch_apply_jmp(struct livepatch_func *func)
 {
-    int32_t val;
     uint8_t *old_ptr;
+    uint8_t insn[MAX_INSN_SIZE];
+    size_t len;
 
-    BUILD_BUG_ON(PATCH_INSN_SIZE > sizeof(func->opaque));
-    BUILD_BUG_ON(PATCH_INSN_SIZE != (1 + sizeof(val)));
+    BUILD_BUG_ON(MAX_INSN_SIZE > sizeof(func->opaque));
 
     old_ptr = func->old_addr;
-    memcpy(func->opaque, old_ptr, PATCH_INSN_SIZE);
+    len = get_len(func);
+    if ( !len )
+        return;
 
-    *old_ptr++ = 0xe9; /* Relative jump */
-    val = func->new_addr - func->old_addr - PATCH_INSN_SIZE;
-    memcpy(old_ptr, &val, sizeof(val));
+    memcpy(func->opaque, old_ptr, len);
+    if ( func->new_addr )
+    {
+        int32_t val;
+
+        BUILD_BUG_ON(PATCH_INSN_SIZE != (1 + sizeof(val)));
+
+        insn[0] = 0xe9;
+        val = func->new_addr - func->old_addr - PATCH_INSN_SIZE;
+
+        memcpy(&insn[1], &val, sizeof(val));
+    }
+    else
+        add_nops(&insn, len);
+
+    memcpy(old_ptr, insn, len);
 }
 
 void arch_livepatch_revert_jmp(const struct livepatch_func *func)
 {
-    memcpy(func->old_addr, func->opaque, PATCH_INSN_SIZE);
+    memcpy(func->old_addr, func->opaque, get_len(func));
 }
 
 /* Serialise the CPU pipeline. */
