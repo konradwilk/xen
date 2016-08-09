@@ -70,6 +70,9 @@ struct payload {
     unsigned int nsyms;                  /* Nr of entries in .strtab and symbols. */
     struct livepatch_build_id id;        /* ELFNOTE_DESC(.note.gnu.build-id) of the payload. */
     struct livepatch_build_id dep;       /* ELFNOTE_DESC(.livepatch.depends). */
+    void **bss;                          /* .bss's of the payload. */
+    size_t *bss_size;                    /* and their sizes. */
+    unsigned int n_bss;                  /* Size of the array. */
     char name[XEN_LIVEPATCH_NAME_SIZE]; /* Name of it. */
 };
 
@@ -255,12 +258,18 @@ static struct payload *find_payload(const char *name)
 static void free_payload_data(struct payload *payload)
 {
     /* Set to zero until "move_payload". */
-    if ( !payload->pages )
-        return;
+    if ( payload->pages )
+    {
+        vfree((void *)payload->text_addr);
+        payload->pages = 0;
+    }
 
-    vfree((void *)payload->text_addr);
-
-    payload->pages = 0;
+    if ( payload->n_bss )
+    {
+        xfree(payload->bss);
+        xfree(payload->bss_size);
+        payload->n_bss = 0;
+    }
 }
 
 /*
@@ -287,6 +296,7 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
     unsigned int i;
     size_t size = 0;
     unsigned int *offset;
+    unsigned int n_bss = 0;
     int rc = 0;
 
     offset = xmalloc_array(unsigned int, elf->hdr->e_shnum);
@@ -309,7 +319,11 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
             calc_section(&elf->sec[i], &payload->text_size, &offset[i]);
         else if ( !(elf->sec[i].sec->sh_flags & SHF_EXECINSTR) &&
                   (elf->sec[i].sec->sh_flags & SHF_WRITE) )
+        {
             calc_section(&elf->sec[i], &payload->rw_size, &offset[i]);
+            if ( elf->sec[i].sec->sh_type == SHT_NOBITS )
+                n_bss++;
+        }
         else if ( !(elf->sec[i].sec->sh_flags & SHF_EXECINSTR) &&
                   !(elf->sec[i].sec->sh_flags & SHF_WRITE) )
             calc_section(&elf->sec[i], &payload->ro_size, &offset[i]);
@@ -334,12 +348,8 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
     size = PFN_UP(size); /* Nr of pages. */
     text_buf = vmalloc_xen(size * PAGE_SIZE);
     if ( !text_buf )
-    {
-        dprintk(XENLOG_ERR, LIVEPATCH "%s: Could not allocate memory for payload!\n",
-                elf->name);
-        rc = -ENOMEM;
-        goto out;
-    }
+        goto out_mem;
+
     rw_buf = text_buf + PAGE_ALIGN(payload->text_size);
     ro_buf = rw_buf + PAGE_ALIGN(payload->rw_size);
 
@@ -347,6 +357,14 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
     payload->text_addr = text_buf;
     payload->rw_addr = rw_buf;
     payload->ro_addr = ro_buf;
+
+    payload->bss = xmalloc_array(void *, n_bss);
+    payload->bss_size = xmalloc_array(size_t, n_bss);
+    if ( !payload->bss || !payload->bss_size )
+        goto out_mem;
+
+    payload->n_bss = n_bss;
+    n_bss = 0; /* Reusing as counter. */
 
     for ( i = 1; i < elf->hdr->e_shnum; i++ )
     {
@@ -374,14 +392,25 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
                         elf->name, elf->sec[i].name, elf->sec[i].load_addr);
             }
             else
-                memset(elf->sec[i].load_addr, 0, elf->sec[i].sec->sh_size);
+            {
+                payload->bss[n_bss] = elf->sec[i].load_addr;
+                payload->bss_size[n_bss++] = elf->sec[i].sec->sh_size;
+            }
         }
     }
+    ASSERT(n_bss == payload->n_bss);
 
  out:
     xfree(offset);
 
     return rc;
+
+ out_mem:
+    dprintk(XENLOG_ERR, LIVEPATCH "%s: Could not allocate memory for payload!\n",
+            elf->name);
+    free_payload_data(payload);
+    rc = -ENOMEM;
+    goto out;
 }
 
 static int secure_payload(struct payload *payload, struct livepatch_elf *elf)
@@ -997,6 +1026,10 @@ static int apply_payload(struct payload *data)
     printk(XENLOG_INFO LIVEPATCH "%s: Applying %u functions\n",
             data->name, data->nfuncs);
 
+    /* And clear the BSS for subsequent operation. */
+    for ( i = 0; i < data->n_bss; i++ )
+        memset(data->bss[i], 0, data->bss_size[i]);
+
     arch_livepatch_quiesce();
 
     for ( i = 0; i < data->nfuncs; i++ )
@@ -1513,9 +1546,9 @@ static void livepatch_printall(unsigned char key)
 
     list_for_each_entry ( data, &payload_list, list )
     {
-        printk(" name=%s state=%s(%d) %p (.data=%p, .rodata=%p) using %u pages.\n",
+        printk(" name=%s state=%s(%d) %p (.data=%p, .rodata=%p) using %u pages (%u .bss).\n",
                data->name, state2str(data->state), data->state, data->text_addr,
-               data->rw_addr, data->ro_addr, data->pages);
+               data->rw_addr, data->ro_addr, data->pages, data->n_bss);
 
         for ( i = 0; i < data->nfuncs; i++ )
         {
