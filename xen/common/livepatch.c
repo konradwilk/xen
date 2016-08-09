@@ -560,11 +560,15 @@ static int prepare_payload(struct payload *payload,
             return -EOPNOTSUPP;
         }
 
-        if ( !f->new_addr || !f->new_size )
+        /* If both are zero then we are NOPing. */
+        if ( (!f->new_addr || !f->new_size) )
         {
-            dprintk(XENLOG_ERR, LIVEPATCH "%s: Address or size fields are zero!\n",
-                    elf->name);
-            return -EINVAL;
+            if ( f->new_addr || f->new_size )
+            {
+                dprintk(XENLOG_ERR, LIVEPATCH "%s: Address or size fields are zero!\n",
+                        elf->name);
+                return -EINVAL;
+            }
         }
 
         rc = arch_livepatch_verify_func(f);
