@@ -1665,6 +1665,7 @@ static int __init livepatch_init(void)
     const void *binary_id;
     unsigned int len;
 
+    xen_build_init();
     if ( !xen_build_id(&binary_id, &len) )
         printk(XENLOG_INFO LIVEPATCH ": build-id: %*phN\n", len, binary_id);
 
