@@ -21,6 +21,7 @@ int xen_build_id(const void **p, unsigned int *len);
 #ifdef CONFIG_BUILD
 int xen_build_id_check(const Elf_Note *n, unsigned int n_sz,
                        const void **p, unsigned int *len);
+void xen_build_init(void);
 #endif
 
 #endif /* __XEN_VERSION_H__ */
