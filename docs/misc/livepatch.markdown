@@ -320,10 +320,12 @@ The size of the structure is 64 bytes on 64-bit hypervisors. It will be
 
 * `new_addr` is the address of the function that is replacing the old
   function. The address is filled in during relocation. The value **MUST** be
-  the address of the new function in the file.
+  either the address of the new function in the file, or zero if we are NOPing out
+  at `old_addr` (and `new_size` **MUST** be zero).
 
 * `old_size` and `new_size` contain the sizes of the respective functions in bytes.
-   The value of `old_size` **MUST** not be zero.
+   The value of `old_size` **MUST** not be zero. If the value of `new_size` is _zero_
+   the code at location of `old_addr` (or `name` when resolved) will be NOPed out.
 
 * `version` is to be one.
 
