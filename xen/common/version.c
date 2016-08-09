@@ -117,10 +117,14 @@ int xen_build_id_check(const Elf_Note *n, unsigned int n_sz,
     return 0;
 }
 
-static int __init xen_build_init(void)
+int __init xen_build_init(void)
 {
     const Elf_Note *n = __note_gnu_build_id_start;
     unsigned int sz;
+
+    /* We may have been called already. */
+    if ( build_id_len )
+        return 0;
 
     /* --build-id invoked with wrong parameters. */
     if ( __note_gnu_build_id_end <= &n[0] )
