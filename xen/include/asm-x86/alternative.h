@@ -23,6 +23,7 @@ struct alt_instr {
     u8  replacementlen;     /* length of new instruction, <= instrlen */
 };
 
+extern void add_nops(void *insns, unsigned int len);
 /* Similar to apply_alternatives except it can be run with IRQs enabled. */
 extern void apply_alternatives_nocheck(struct alt_instr *start,
                                        struct alt_instr *end);
