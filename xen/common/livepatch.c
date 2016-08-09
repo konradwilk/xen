@@ -630,7 +630,7 @@ static int prepare_payload(struct payload *payload,
         region->frame[i].n_bugs = sec->sec->sh_size /
                                   sizeof(*region->frame[i].bugs);
     }
-
+#if defined(CONFIG_ALTERNATIVE) || defined(CONFIG_X86)
     sec = livepatch_elf_sec_by_name(elf, ".altinstructions");
     if ( sec )
     {
@@ -671,7 +671,7 @@ static int prepare_payload(struct payload *payload,
         apply_alternatives(start, sec->sec->sh_size);
 #endif
     }
-
+#endif
 #ifndef CONFIG_ARM
     sec = livepatch_elf_sec_by_name(elf, ".ex_table");
     if ( sec )
