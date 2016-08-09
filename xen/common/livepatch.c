@@ -1496,9 +1496,13 @@ static int build_id_dep(struct payload *payload, bool_t internal)
     if ( payload->dep.len != len ||
          memcmp(id, payload->dep.p, len) )
     {
+#ifndef CONFIG_ARM
         dprintk(XENLOG_ERR, "%s%s: check against %s build-id failed!\n",
                 LIVEPATCH, payload->name, name);
         return -EINVAL;
+#else
+        return 0;
+#endif
     }
 
     return 0;
@@ -1698,10 +1702,102 @@ static void livepatch_printall(unsigned char key)
     spin_unlock(&payload_lock);
 }
 
+#include <xen/livepatch_built_in.h>
+static int livepatch_load(void)
+{
+    char n[XEN_LIVEPATCH_NAME_SIZE] = {"initial"};
+    void *raw_data = NULL;
+    int rc;
+    struct payload *data;
+
+    data = xzalloc(struct payload);
+    if ( !data )
+    {
+        rc = -ENOMEM;
+        goto out;
+    }
+    rc = -ENOMEM;
+    raw_data = vmalloc(arch_arm_test_xen_hello_world_livepatch_len);
+    if ( !raw_data )
+        goto out;
+
+    memcpy(raw_data, arch_arm_test_xen_hello_world_livepatch, arch_arm_test_xen_hello_world_livepatch_len);
+    memcpy(data->name, n, strlen(n));
+
+    spin_lock(&payload_lock);
+
+    rc = load_payload_data(data, raw_data, arch_arm_test_xen_hello_world_livepatch_len);
+    if ( rc )
+    {
+        spin_unlock(&payload_lock);
+        goto out;
+    }
+
+    data->state = LIVEPATCH_STATE_CHECKED;
+    INIT_LIST_HEAD(&data->list);
+    INIT_LIST_HEAD(&data->applied_list);
+
+    list_add_tail(&data->list, &payload_list);
+    payload_cnt++;
+    payload_version++;
+
+    spin_unlock(&payload_lock);
+
+ out:
+    vfree(raw_data);
+
+    if ( rc && data )
+    {
+        xfree((void *)data->symtab);
+        xfree((void *)data->strtab);
+        xfree(data);
+    }
+
+    return rc;
+}
+
+static struct timer test_timer;
+static struct timer load_payload;
+
+static void load_payload_fnc(void *unused)
+{
+    int rc;
+    struct payload *p;
+
+        rc = livepatch_load();
+        printk(XENLOG_INFO LIVEPATCH ": rc=%d\n", rc);
+        if ( rc )
+            return;
+
+        livepatch_printall('x');
+        p = list_last_entry(&payload_list, struct payload, list);
+        rc = build_id_dep(p, list_empty(&applied_list));
+
+        p->rc = -EAGAIN;
+
+        dprintk(XENLOG_INFO, LIVEPATCH "%s: LIVEPATCH_ACTION_APPLY!\n", __func__);
+        spin_lock(&payload_lock);
+        rc = schedule_work(p, LIVEPATCH_ACTION_APPLY, 0);
+        spin_unlock(&payload_lock);
+        check_for_livepatch_work();
+        dprintk(XENLOG_INFO, LIVEPATCH "%s: rc=%d (p->rc=%d)\n", __func__, rc, p->rc);
+
+}
+static int increase;
+
+static void print_extra_version(void *unused)
+{
+    printk(XENLOG_INFO LIVEPATCH "%s\n", xen_extra_version());
+    livepatch_printall('x');
+
+    set_timer(&test_timer, NOW() + SECONDS(10 + increase++));
+    //set_timer(&test_timer, NOW() + SECONDS(1));
+}
 static int __init livepatch_init(void)
 {
     const void *binary_id;
     unsigned int len;
+    int rc = 0;
 
     xen_build_init();
     if ( !xen_build_id(&binary_id, &len) )
@@ -1710,7 +1806,17 @@ static int __init livepatch_init(void)
     register_keyhandler('x', livepatch_printall, "print livepatch info", 1);
 
     arch_livepatch_init();
-    return 0;
+
+    WARN_ON(1);
+    {
+        printk(XENLOG_INFO LIVEPATCH ": rc(%d) on %s\n",  rc, xen_extra_version());
+
+        init_timer(&test_timer, print_extra_version, NULL, 0);
+        init_timer(&load_payload, load_payload_fnc, NULL, 0);
+        set_timer(&test_timer, NOW() + SECONDS(1));
+        set_timer(&load_payload, NOW() + SECONDS(5));
+    }
+    return rc;
 }
 __initcall(livepatch_init);
 
