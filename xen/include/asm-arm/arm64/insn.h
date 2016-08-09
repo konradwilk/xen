@@ -38,6 +38,14 @@ enum aarch64_insn_imm_type {
 	AARCH64_INSN_IMM_MAX
 };
 
+enum aarch64_insn_branch_type {
+	AARCH64_INSN_BRANCH_NOLINK,
+	AARCH64_INSN_BRANCH_LINK,
+	AARCH64_INSN_BRANCH_RETURN,
+	AARCH64_INSN_BRANCH_COMP_ZERO,
+	AARCH64_INSN_BRANCH_COMP_NONZERO,
+};
+
 #define	__AARCH64_INSN_FUNCS(abbr, mask, val)	\
 static always_inline bool_t aarch64_insn_is_##abbr(u32 code) \
 { return (code & (mask)) == (val); } \
@@ -60,6 +68,9 @@ u32 aarch64_insn_encode_immediate(enum aarch64_insn_imm_type type,
 
 s32 aarch64_get_branch_offset(u32 insn);
 u32 aarch64_set_branch_offset(u32 insn, s32 offset);
+
+u32 aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr,
+				enum aarch64_insn_branch_type type);
 
 /* Wrapper for common code */
 static inline bool insn_is_branch_imm(u32 insn)
