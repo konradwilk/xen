@@ -23,6 +23,7 @@
 #include <xen/wait.h>
 #include <xen/livepatch_elf.h>
 #include <xen/livepatch.h>
+#include <xen/livepatch_payload.h>
 
 #include <asm/event.h>
 
@@ -72,7 +73,11 @@ struct payload {
     struct livepatch_build_id dep;       /* ELFNOTE_DESC(.livepatch.depends). */
     void *bss;                           /* .bss of the payload. */
     size_t bss_size;                     /* and its size. */
-    char name[XEN_LIVEPATCH_NAME_SIZE]; /* Name of it. */
+    livepatch_loadcall_t **load_funcs;   /* The array of funcs to call after */
+    livepatch_unloadcall_t **unload_funcs;/* load and unload of the payload. */
+    unsigned int n_load_funcs;           /* Nr of the funcs to load and execute. */
+    unsigned int n_unload_funcs;         /* Nr of funcs to call durung unload. */
+    char name[XEN_LIVEPATCH_NAME_SIZE];  /* Name of it. */
 };
 
 /* Defines an outstanding patching action. */
@@ -580,6 +585,27 @@ static int prepare_payload(struct payload *payload,
             return rc;
     }
 
+    sec = livepatch_elf_sec_by_name(elf, ".livepatch.hooks.load");
+    if ( sec )
+    {
+        if ( !sec->sec->sh_size ||
+             (sec->sec->sh_size % sizeof(*payload->load_funcs)) )
+            return -EINVAL;
+
+        payload->load_funcs = sec->load_addr;
+        payload->n_load_funcs = sec->sec->sh_size / sizeof(*payload->load_funcs);
+    }
+
+    sec = livepatch_elf_sec_by_name(elf, ".livepatch.hooks.unload");
+    if ( sec )
+    {
+        if ( !sec->sec->sh_size ||
+             (sec->sec->sh_size % sizeof(*payload->unload_funcs)) )
+            return -EINVAL;
+
+        payload->unload_funcs = sec->load_addr;
+        payload->n_unload_funcs = sec->sec->sh_size / sizeof(*payload->unload_funcs);
+    }
     sec = livepatch_elf_sec_by_name(elf, ELF_BUILD_ID_NOTE);
     if ( sec )
     {
@@ -1064,6 +1090,17 @@ static int apply_payload(struct payload *data)
 
     arch_livepatch_quiesce();
 
+    /*
+     * The hooks may call common code which expects spinlocks to be certain
+     * type, as such disable this temporarily.
+     */
+    spin_debug_disable();
+    for ( i = 0; i < data->n_load_funcs; i++ )
+        data->load_funcs[i]();
+    spin_debug_enable();
+
+    ASSERT(!local_irq_is_enabled());
+
     for ( i = 0; i < data->nfuncs; i++ )
         arch_livepatch_apply_jmp(&data->funcs[i]);
 
@@ -1089,6 +1126,17 @@ static int revert_payload(struct payload *data)
 
     for ( i = 0; i < data->nfuncs; i++ )
         arch_livepatch_revert_jmp(&data->funcs[i]);
+
+    /*
+     * The hooks may call common code which expects spinlocks to be certain
+     * type, as such disable this temporarily.
+     */
+    spin_debug_disable();
+    for ( i = 0; i < data->n_unload_funcs; i++ )
+        data->unload_funcs[i]();
+    spin_debug_enable();
+
+    ASSERT(!local_irq_is_enabled());
 
     arch_livepatch_revive();
 
