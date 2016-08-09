@@ -209,6 +209,47 @@ u32 aarch64_set_branch_offset(u32 insn, s32 offset)
 	BUG();
 }
 
+static inline long branch_imm_common(unsigned long pc, unsigned long addr,
+				     long range)
+{
+	long offset;
+
+	if ((pc & 0x3) || (addr & 0x3)) {
+		pr_err("%s: A64 instructions must be word aligned\n", __func__);
+		return range;
+	}
+
+	offset = ((long)addr - (long)pc);
+
+	if (offset < -range || offset >= range) {
+		pr_err("%s: offset out of range\n", __func__);
+		return range;
+	}
+
+	return offset;
+}
+
+u32 __kprobes aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr)
+{
+	u32 insn;
+	long offset;
+
+	/*
+	 * B/BL support [-128M, 128M) offset
+	 * ARM64 virtual address arrangement guarantees all kernel and module
+	 * texts are within +/-128M.
+	 */
+	offset = branch_imm_common(pc, addr, SZ_128M);
+	if (offset >= SZ_128M)
+		return AARCH64_BREAK_FAULT;
+
+	insn = aarch64_insn_get_b_value();
+
+	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_26, insn,
+					     offset >> 2);
+}
+
+
 /*
  * Local variables:
  * mode: C
