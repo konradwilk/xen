@@ -312,7 +312,7 @@ The size of the structure is 64 bytes on 64-bit hypervisors. It will be
 
 * `name` is the symbol name of the old function. Only used if `old_addr` is
    zero, otherwise will be used during dynamic linking (when hypervisor loads
-   the payload).
+   the payload). The format can be _symbol_ or _symbol+0x<offset>/<len>_.
 
 * `old_addr` is the address of the function to be patched and is filled in at
   payload generation time if hypervisor function address is known. If unknown,
