@@ -234,14 +234,45 @@ static const char *livepatch_symbols_lookup(unsigned long addr,
 
 static int lookup_symbol(struct livepatch_func *f, struct livepatch_elf *elf)
 {
+    const char *s;
+    char *plus = NULL, *slash = NULL;
+    unsigned long offset = 0;
+
     if ( f->old_addr )
         return 0;
 
+    s = f->name;
+    /* +<offset>/<len> */
+    plus = strchr(f->name, '+');
+    if ( plus )
+    {
+        slash = strchr(plus, '/');
+
+        if ( slash )
+        {
+            const char *endp = NULL;
+            unsigned int len;
+
+            offset = simple_strtoul(plus+1, &endp, 16);
+
+            if ( endp != slash )
+                return -EINVAL;
+
+            len = simple_strtoul(slash+1, NULL, 16);
+
+            if ( arch_verify_insn_length(len) )
+                return -EINVAL;
+
+            *plus = '\0';
+            s = f->name;
+        }
+    }
+
     /* Lookup function's old address if not already resolved. */
-    f->old_addr = (void *)symbols_lookup_by_name(f->name);
+    f->old_addr = (void *)symbols_lookup_by_name(s);
     if ( !f->old_addr )
     {
-        f->old_addr = (void *)livepatch_symbols_lookup_by_name(f->name);
+        f->old_addr = (void *)livepatch_symbols_lookup_by_name(s);
         if ( !f->old_addr )
         {
             dprintk(XENLOG_ERR, LIVEPATCH "%s: Could not resolve old address of %s\n",
@@ -249,6 +280,13 @@ static int lookup_symbol(struct livepatch_func *f, struct livepatch_elf *elf)
             return -ENOENT;
         }
     }
+
+    if ( plus )
+    {
+        *plus = '+';
+        f->old_addr += offset;
+    }
+
     dprintk(XENLOG_DEBUG, LIVEPATCH "%s: Resolved old address %s => %p\n",
             elf->name, f->name, f->old_addr);
 
