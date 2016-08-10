@@ -27,6 +27,11 @@ void arch_livepatch_revive(void)
     write_cr0(read_cr0() | X86_CR0_WP);
 }
 
+int arch_verify_insn_length(unsigned long len)
+{
+    return len != PATCH_INSN_SIZE;
+}
+
 int arch_livepatch_verify_func(const struct livepatch_func *func)
 {
     /* No NOP patching yet. */

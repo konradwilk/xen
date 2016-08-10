@@ -7,6 +7,14 @@
 #include <xen/livepatch_elf.h>
 #include <xen/livepatch.h>
 
+/* On ARM32,64 instructions are always 4 bytes long. */
+#define PATCH_INSN_SIZE 4
+
+int arch_verify_insn_length(unsigned long len)
+{
+    return len != PATCH_INSN_SIZE;
+}
+
 void arch_livepatch_quiesce(void)
 {
 }
