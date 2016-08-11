@@ -40,6 +40,7 @@ void arch_livepatch_apply_jmp(struct livepatch_func *func)
     ASSERT(insn != AARCH64_BREAK_FAULT);
     new_ptr = func->old_addr - (void *)_start + vmap_of_xen_text;
 
+    printk("%-4x -> %-4x\n", *old_ptr, insn);
     /* PATCH! */
     *(new_ptr) = cpu_to_le32(insn);
 
