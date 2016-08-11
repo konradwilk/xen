@@ -21,14 +21,14 @@ void arch_livepatch_apply_jmp(struct livepatch_func *func)
     uint32_t *old_ptr;
     uint32_t *new_ptr;
 
-    BUILD_BUG_ON(PATCH_INSN_SIZE > sizeof(func->opaque));
+    BUILD_BUG_ON(PATCH_INSN_SIZE > sizeof(func->u.s.opaque));
     BUILD_BUG_ON(PATCH_INSN_SIZE != sizeof(insn));
 
     ASSERT( vmap_of_xen_text );
 
     /* Save old one. */
     old_ptr = func->old_addr;
-    memcpy(func->opaque, old_ptr, PATCH_INSN_SIZE);
+    memcpy(func->u.s.opaque, old_ptr, PATCH_INSN_SIZE);
 
     /* Branch, no link. */
     insn = aarch64_insn_gen_branch_imm((unsigned long)func->old_addr,
@@ -48,7 +48,7 @@ void arch_livepatch_revert_jmp(const struct livepatch_func *func)
     uint32_t *new_ptr;
     uint32_t insn;
 
-    memcpy(&insn, func->opaque, PATCH_INSN_SIZE);
+    memcpy(&insn, func->u.s.opaque, PATCH_INSN_SIZE);
 
     new_ptr = (uint32_t *)func->old_addr - (u32 *)_start + vmap_of_xen_text;
 

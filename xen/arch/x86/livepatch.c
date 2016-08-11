@@ -47,10 +47,10 @@ void arch_livepatch_apply_jmp(struct livepatch_func *func)
     uint8_t *old_ptr;
     uint8_t insn[PATCH_INSN_SIZE];
 
-    BUILD_BUG_ON(PATCH_INSN_SIZE > sizeof(func->opaque));
+    BUILD_BUG_ON(PATCH_INSN_SIZE > sizeof(func->u.s.opaque));
 
     old_ptr = func->old_addr;
-    memcpy(func->opaque, old_ptr, PATCH_INSN_SIZE);
+    memcpy(func->u.s.opaque, old_ptr, PATCH_INSN_SIZE);
 
     if ( func->new_size )
     {
@@ -69,7 +69,7 @@ void arch_livepatch_apply_jmp(struct livepatch_func *func)
 
 void arch_livepatch_revert_jmp(const struct livepatch_func *func)
 {
-    memcpy(func->old_addr, func->opaque, PATCH_INSN_SIZE);
+    memcpy(func->old_addr, func->u.s.opaque, PATCH_INSN_SIZE);
 }
 
 /* Serialise the CPU pipeline. */
