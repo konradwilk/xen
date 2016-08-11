@@ -884,7 +884,13 @@ struct livepatch_func {
     uint32_t new_size;
     uint32_t old_size;
     uint8_t version;        /* MUST be LIVEPATCH_PAYLOAD_VERSION. */
-    uint8_t opaque[31];
+    union {
+        uint8_t opaque[31];
+        struct {
+            int32_t idx;
+            uint8_t opaque[27];
+        } s;
+    } u;
 };
 typedef struct livepatch_func livepatch_func_t;
 #endif

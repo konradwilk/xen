@@ -580,6 +580,7 @@ static int prepare_payload(struct payload *payload,
         if ( rc )
             return rc;
 
+        f->u.s.idx = -1;
         rc = lookup_symbol(f, elf);
         if ( rc )
             return rc;
@@ -842,6 +843,7 @@ static int build_symbol_table(struct payload *payload,
         {
             if ( symtab[i].value == (unsigned long)payload->funcs[j].new_addr )
             {
+                payload->funcs[j].u.s.idx = i;
                 found = 1;
                 break;
             }
@@ -1112,8 +1114,21 @@ static int apply_payload(struct payload *data)
     ASSERT(!local_irq_is_enabled());
 
     for ( i = 0; i < data->nfuncs; i++ )
+    {
+        int idx;
+
+        idx = data->funcs[i].u.s.idx;
+        if ( idx >= 0 )
+        {
+            struct livepatch_symbol *s;
+
+            s = (struct livepatch_symbol *)&data->symtab[idx];
+            s->new_symbol = 1;
+        }
+
         arch_livepatch_apply_jmp(&data->funcs[i]);
 
+    }
     arch_livepatch_revive();
 
     /*
@@ -1135,7 +1150,19 @@ static int revert_payload(struct payload *data)
     arch_livepatch_quiesce();
 
     for ( i = 0; i < data->nfuncs; i++ )
+    {
+        int idx;
+
+        idx = data->funcs[i].u.s.idx;
+        if ( idx >= 0 )
+        {
+            struct livepatch_symbol *s;
+
+            s = (struct livepatch_symbol *)&data->symtab[idx];
+            s->new_symbol = 0;
+        }
         arch_livepatch_revert_jmp(&data->funcs[i]);
+    }
 
     /*
      * The hooks may call common code which expects spinlocks to be certain
