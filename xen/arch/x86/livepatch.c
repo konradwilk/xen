@@ -64,6 +64,18 @@ void arch_livepatch_apply_jmp(struct livepatch_func *func)
     } else
         add_nops(&insn, PATCH_INSN_SIZE);
 
+    printk("%pS:", func->old_addr);
+    {
+        unsigned int i;
+
+        for (i = 0; i < PATCH_INSN_SIZE;i++)
+            printk("%02x", func->u.s.opaque[i]);
+
+        printk("->");
+        for (i = 0; i < PATCH_INSN_SIZE;i++)
+            printk("%02x", insn[i]);
+        printk("\n");
+    }
     memcpy(old_ptr, insn, PATCH_INSN_SIZE);
 }
 
