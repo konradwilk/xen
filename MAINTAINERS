@@ -271,6 +271,7 @@ F:  tools/misc/xen-livepatch.c
 F:  xen/arch/*/livepatch*
 F:  xen/arch/*/*/livepatch*
 F:  xen/common/livepatch*
+F:  xen/test/livepatch/*
 F:  xen/include/xen/livepatch*
 
 MACHINE CHECK (MCA) & RAS
