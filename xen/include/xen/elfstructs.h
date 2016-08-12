@@ -370,6 +370,18 @@ typedef struct {
 #define R_X86_64_PLT32		4	/* 32 bit PLT address */
 
 /*
+ * ARM32 relocation types. See
+ * http://infocenter.arm.com/help/topic/com.arm.doc.ihi0044f/IHI0044F_aaelf.pdf
+ */
+#define R_ARM_NONE              0
+#define R_ARM_ABS32             2
+#define R_ARM_REL32             3
+#define R_ARM_CALL              28
+#define R_ARM_JUMP24            29
+#define R_ARM_MOVW_ABS_NC       43
+#define R_ARM_MOVT_ABS          44
+
+/*
  * S - address of symbol.
  * A - addend for relocation (r_addend)
  * P - address of the dest being relocated (derieved from r_offset)

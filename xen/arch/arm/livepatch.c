@@ -47,11 +47,14 @@ int arch_livepatch_quiesce(void)
 
 void arch_livepatch_revive(void)
 {
+#ifndef CONFIG_ARM_32
     /*
      * Nuke the instruction cache. It has been cleaned before in
-     * arch_livepatch_apply_jmp.
+     * arch_livepatch_apply_jmp. On ARM32 we do this in
+     * flush_xen_text_tlb_local.
      */
     invalidate_icache();
+#endif
 
     if ( vmap_of_xen_text )
         vunmap(vmap_of_xen_text);

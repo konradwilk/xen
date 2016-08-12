@@ -41,9 +41,85 @@ int arch_livepatch_perform_rela(struct livepatch_elf *elf,
                                 const struct livepatch_elf_sec *base,
                                 const struct livepatch_elf_sec *rela)
 {
-    return -ENOSYS;
-}
+    const Elf_RelA *r;
+    unsigned int symndx, i;
+    uint32_t val;
+    void *dest;
 
+    for ( i = 0; i < (rela->sec->sh_size / rela->sec->sh_entsize); i++ )
+    {
+        s32 offset;
+
+        r = rela->data + i * rela->sec->sh_entsize;
+
+        symndx = ELF32_R_SYM(r->r_info);
+
+        if ( symndx > elf->nsym )
+        {
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: Relative symbol wants symbol@%u which is past end!\n",
+                    elf->name, symndx);
+            return -EINVAL;
+        }
+
+        dest = base->load_addr + r->r_offset; /* P */
+        val = elf->sym[symndx].sym->st_value; /* S */
+
+        /* r->r_addend is computed below. */
+        switch ( ELF32_R_TYPE(r->r_info) ) {
+        case R_ARM_NONE:
+            /* ignore */
+            break;
+
+        case R_ARM_MOVW_ABS_NC:
+        case R_ARM_MOVT_ABS:
+			if ( ELF32_R_TYPE(r->r_info) == R_ARM_MOVT_ABS )
+                /* MOVT loads 16 bits into the top half of a register.*/
+				val &= 0xFFFF0000;
+            else
+                /* MOVW loads 16 bits into the bottom half of a register */
+                val &= 0xFFFF;
+            /*
+             * insn[19:16] = Result_Mask(X) >> 12
+             * insn[11:0] = Result_Mask(X) & 0xFFF
+            */
+            *(u32 *)dest |= val & 0xFFF;
+            *(u32 *)dest |= (val >> 12) << 16;
+            break;
+
+        case R_ARM_ABS32: /* (S + A) | T */
+            *(u32 *)dest = val + r->r_addend;
+            break;
+
+        case R_ARM_CALL:
+        case R_ARM_JUMP24:
+            offset = *(u32 *)dest;
+            /* addend = sign_extend (insn[23:0] << 2) */
+            offset = (offset & 0x00ffffff) << 2;
+            /* (S + A) - P */
+            offset += val - (unsigned long)dest;
+            /* X & 0x03FFFFFE */
+            offset &= 0x03FFFFFE;
+            *(u32 *)dest = offset;
+            /* TODO: Check overflow. */
+            if ( 0 )
+            {
+                dprintk(XENLOG_ERR, LIVEPATCH "%s: Overflow in relocation %u in %s for %s!\n",
+                        elf->name, i, rela->name, base->name);
+                return -EOVERFLOW;
+            }
+            break;
+        case R_ARM_REL32: /* ((S + A) | T) – P */
+            *(u32 *)dest  = *(u32 *)dest + val - (unsigned long)dest;
+            break;
+
+        default:
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: Unhandled relocation #%x\n",
+                    elf->name, ELF32_R_TYPE(r->r_info));
+             return -EOPNOTSUPP;
+        }
+    }
+    return 0;
+}
 /*
  * Local variables:
  * mode: C

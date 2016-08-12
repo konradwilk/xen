@@ -6,7 +6,11 @@ OBJCOPY_MAGIC := -I binary -O elf64-x86-64 -B i386:x86-64
 # the whole insn we need to subtract 1 (and make the insn of length 5).
 RELOC_SUBTRACT := 1
 else
-OBJCOPY_MAGIC := -I binary -O elf64-littleaarch64 -B aarch64
+  ifeq ($(XEN_TARGET_ARCH),arm32)
+  OBJCOPY_MAGIC := -I binary -O elf32-littlearm -B arm
+  else
+  OBJCOPY_MAGIC := -I binary -O elf64-littleaarch64 -B aarch64
+  endif
 # While ARM insn are always 4 bytes.
 RELOC_SUBTRACT := 0
 endif
