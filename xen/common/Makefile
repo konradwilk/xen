@@ -82,6 +82,4 @@ subdir-$(CONFIG_HAS_DEVICE_TREE) += libfdt
 
 .PHONY: tests
 tests:
-ifneq ($(XEN_TARGET_ARCH),arm32)
 	$(MAKE) -f $(BASEDIR)/Rules.mk -C test livepatch
-endif

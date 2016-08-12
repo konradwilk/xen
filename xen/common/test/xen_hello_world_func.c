@@ -28,7 +28,9 @@ const char *xen_hello_world(void)
     rc = __get_user(tmp, non_canonical_addr);
     BUG_ON(rc != -EFAULT);
 #else
+#ifdef CONFIG_ARM_64
      asm(ALTERNATIVE("nop", "nop", 1));
+#endif
 #endif
     return "Hello World";
 }
