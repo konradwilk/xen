@@ -143,6 +143,8 @@ vaddr_t xenheap_virt_end __read_mostly;
 vaddr_t xenheap_virt_start __read_mostly;
 #endif
 
+vaddr_t xen_virt_end;
+
 unsigned long frametable_base_pdx __read_mostly;
 unsigned long frametable_virt_end __read_mostly;
 
@@ -539,6 +541,8 @@ void __init setup_pagetables(unsigned long boot_phys_offset, paddr_t xen_paddr)
         write_pte(xen_xenmap + i, pte);
         /* No flush required here as page table is not hooked in yet. */
     }
+
+    xen_virt_end = XEN_VIRT_START + (i << PAGE_SHIFT);
 
     pte = pte_of_xenaddr((vaddr_t)xen_xenmap);
     pte.pt.table = 1;

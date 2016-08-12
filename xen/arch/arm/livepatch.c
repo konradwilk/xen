@@ -6,51 +6,85 @@
 #include <xen/lib.h>
 #include <xen/livepatch_elf.h>
 #include <xen/livepatch.h>
+#include <xen/vmap.h>
+#include "livepatch.h"
 
-/* On ARM32,64 instructions are always 4 bytes long. */
-#define PATCH_INSN_SIZE 4
+#include <asm/mm.h>
+
+void *vmap_of_xen_text;
 
 int arch_verify_insn_length(unsigned long len)
 {
     return len != PATCH_INSN_SIZE;
 }
 
-void arch_livepatch_quiesce(void)
+int arch_livepatch_quiesce(void)
 {
+    mfn_t text_mfn;
+    unsigned int text_order;
+
+    if ( vmap_of_xen_text )
+        return;
+
+    text_mfn = _mfn(virt_to_mfn(_stext));
+    text_order = get_order_from_bytes(_end - _start);
+
+    /*
+     * The text section is read-only. So re-map Xen to be able to patch
+     * the code.
+     */
+    vmap_of_xen_text = __vmap(&text_mfn, 1 << text_order, 1, 1, PAGE_HYPERVISOR,
+                              VMAP_DEFAULT);
+
+    if ( !vmap_of_xen_text )
+    {
+        dprintk(XENLOG_ERROR, LIVEPATCH "Failed to setup alternative vmap of hypervisor! (order=%u)",
+                text_order);
+        return -ENOMEM;
+    }
+    return 0;
 }
 
 void arch_livepatch_revive(void)
 {
+    /*
+     * Nuke the instruction cache. It has been cleaned before in
+     * arch_livepatch_apply_jmp.
+     */
+    invalidate_icache();
+
+    if ( vmap_of_xen_text )
+        vunmap(vmap_of_xen_text);
+
+    vmap_of_xen_text = NULL;
 }
 
 int arch_livepatch_verify_func(const struct livepatch_func *func)
 {
-    return -ENOSYS;
-}
+    /* No NOP patching yet. */
+    if ( !func->new_size )
+        return -EOPNOTSUPP;
 
-void arch_livepatch_apply_jmp(struct livepatch_func *func)
-{
-}
+    if ( func->old_size < PATCH_INSN_SIZE )
+        return -EINVAL;
 
-void arch_livepatch_revert_jmp(const struct livepatch_func *func)
-{
+    return 0;
 }
 
 void arch_livepatch_post_action(void)
 {
+    /* arch_livepatch_revive has nuked the instruction cache. */
 }
 
 void arch_livepatch_mask(void)
 {
+    /* Mask System Error (SError) */
+    local_abort_disable();
 }
 
 void arch_livepatch_unmask(void)
 {
-}
-
-int arch_livepatch_verify_elf(const struct livepatch_elf *elf)
-{
-    return -ENOSYS;
+    local_abort_enable();
 }
 
 int arch_livepatch_perform_rel(struct livepatch_elf *elf,
@@ -60,20 +94,36 @@ int arch_livepatch_perform_rel(struct livepatch_elf *elf,
     return -ENOSYS;
 }
 
-int arch_livepatch_perform_rela(struct livepatch_elf *elf,
-                                const struct livepatch_elf_sec *base,
-                                const struct livepatch_elf_sec *rela)
-{
-    return -ENOSYS;
-}
-
 int arch_livepatch_secure(const void *va, unsigned int pages, enum va_type type)
 {
-    return -ENOSYS;
+    unsigned long start = (unsigned long)va;
+    unsigned int flags;
+
+    ASSERT(va);
+    ASSERT(pages);
+
+    if ( type == LIVEPATCH_VA_RX )
+        flags = 0x2; /* R set,NX clear */
+    else if ( type == LIVEPATCH_VA_RW )
+        flags = 0x1; /* R clear, NX set */
+    else
+        flags = 0x3; /* R set,NX set */
+
+    modify_xen_mappings(start, start + pages * PAGE_SIZE, flags);
+
+    return 0;
 }
 
 void __init arch_livepatch_init(void)
 {
+	void *start, *end;
+
+	start = (void *)xen_virt_end;
+	end = (void *)FIXMAP_ADDR(0);
+
+	BUG_ON(start >= end);
+
+	vm_init_type(VMAP_XEN, start, end);
 }
 
 /*

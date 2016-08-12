@@ -103,6 +103,15 @@ typedef uint64_t	Elf64_Xword;
                       (ehdr).e_ident[EI_MAG2] == ELFMAG2 && \
                       (ehdr).e_ident[EI_MAG3] == ELFMAG3)
 
+/* e_flags */
+#define EF_ARM_EABI_MASK	0xff000000
+#define EF_ARM_EABI_UNKNOWN	0x00000000
+#define EF_ARM_EABI_VER1	0x01000000
+#define EF_ARM_EABI_VER2	0x02000000
+#define EF_ARM_EABI_VER3	0x03000000
+#define EF_ARM_EABI_VER4	0x04000000
+#define EF_ARM_EABI_VER5	0x05000000
+
 /* ELF Header */
 typedef struct elfhdr {
 	unsigned char	e_ident[EI_NIDENT]; /* ELF Identification */
@@ -171,6 +180,7 @@ typedef struct {
 #define EM_PPC		20		/* PowerPC */
 #define EM_PPC64	21		/* PowerPC 64-bit */
 #define EM_ARM		40		/* Advanced RISC Machines ARM */
+#define EM_AARCH64	183
 #define EM_ALPHA	41		/* DEC ALPHA */
 #define EM_SPARCV9	43		/* SPARC version 9 */
 #define EM_ALPHA_EXP	0x9026		/* DEC ALPHA */
@@ -358,6 +368,31 @@ typedef struct {
 #define R_X86_64_64	    	1	/* Direct 64 bit  */
 #define R_X86_64_PC32		2	/* PC relative 32 bit signed */
 #define R_X86_64_PLT32		4	/* 32 bit PLT address */
+
+/*
+ * S - address of symbol.
+ * A - addend for relocation (r_addend)
+ * P - address of the dest being relocated (derieved from r_offset)
+ * NC -  No check for overflow.
+ *
+ * The defines also use _PREL for PC-relative address, and _NC is No Check.
+ */
+#define R_AARCH64_ABS64		257 /* Direct 64 bit. S+A, NC*/
+#define R_AARCH64_ABS32		258 /* Direct 32 bit. S+A */
+#define R_AARCH64_PREL64	260 /* S+A-P, NC */
+#define R_AARCH64_PREL32	261 /* S+A-P */
+
+#define R_AARCH64_ADR_PREL_LO21	274 /* ADR imm, [20:0]. S+A-P */
+#define R_AARCH64_ADR_PREL_PG_HI21 275 /* ADRP imm, [32:12]. Page(S+A) - Page(P).*/
+#define R_AARCH64_ADD_ABS_LO12_NC	277 /* ADD imm. from bits 11:0. S+A, NC */
+
+#define R_AARCH64_CONDBR19	280 /* Bits 20:2, S+A-P */
+#define R_AARCH64_JUMP26	282 /* Bits 27:2, S+A-P */
+#define R_AARCH64_CALL26	283 /* Bits 27:2, S+A-P */
+#define R_AARCH64_LDST16_ABS_LO12_NC	284 /* LD/ST to bits 11:1, S+A, NC */
+#define R_AARCH64_LDST32_ABS_LO12_NC	285 /* LD/ST to bits 11:2, S+A, NC */
+#define R_AARCH64_LDST64_ABS_LO12_NC	286 /* LD/ST to bits 11:3, S+A, NC */
+#define R_AARCH64_LDST8_ABS_LO12_NC	278 /* LD/ST to bits 11:0, S+A, NC */
 
 /* Program Header */
 typedef struct {

@@ -120,6 +120,7 @@ extern vaddr_t xenheap_virt_end;
 extern vaddr_t xenheap_virt_start;
 #endif
 
+extern vaddr_t xen_virt_end;
 #ifdef CONFIG_ARM_32
 #define is_xen_heap_page(page) is_xen_heap_mfn(page_to_mfn(page))
 #define is_xen_heap_mfn(mfn) ({                                 \
