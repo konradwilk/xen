@@ -335,6 +335,14 @@ static void calc_section(const struct livepatch_elf_sec *sec, size_t *size,
     const Elf_Shdr *s = sec->sec;
     size_t align_size;
 
+#ifdef CONFIG_ARM_32
+    if ( s->sh_addralign % 4 )
+    {
+	dprintk(XENLOG_DEBUG, LIVEPATCH "Adjusting aligment for %s (%x)\n",
+		sec->name, (uint32_t)s->sh_addralign);
+        ((Elf_Shdr *)s)->sh_addralign = 4;
+    }
+#endif
     align_size = ROUNDUP(*size, s->sh_addralign);
     *offset = align_size;
     *size = s->sh_size + align_size;

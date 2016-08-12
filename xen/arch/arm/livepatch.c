@@ -43,11 +43,14 @@ int arch_livepatch_quiesce(void)
 
 void arch_livepatch_revive(void)
 {
+#ifndef CONFIG_ARM_32
     /*
      * Nuke the instruction cache. It has been cleaned before in
-     * arch_livepatch_apply_jmp.
+     * arch_livepatch_apply_jmp. On ARM32 we do this in
+     * flush_xen_text_tlb_local.
      */
     invalidate_icache();
+#endif
 
     if ( vmap_of_xen_text )
         vunmap(vmap_of_xen_text);
@@ -118,13 +121,6 @@ int arch_is_payload_symbol(const struct livepatch_elf *elf,
     }
     return 1;
 }
-int arch_livepatch_perform_rel(struct livepatch_elf *elf,
-                               const struct livepatch_elf_sec *base,
-                               const struct livepatch_elf_sec *rela)
-{
-    return -ENOSYS;
-}
-
 int arch_livepatch_secure(const void *va, unsigned int pages, enum va_type type)
 {
     unsigned long start = (unsigned long)va;
@@ -140,6 +136,9 @@ int arch_livepatch_secure(const void *va, unsigned int pages, enum va_type type)
     else
         flags = PTE_NX | PTE_RO; /* R set, NX set */
 
+    dprintk(XENLOG_DEBUG, LIVEPATCH " 0x%lx is 0x%x %s %s\n", start, flags,
+	 flags & PTE_RO ? "RO" : "",
+	flags & PTE_NX ? "NX" : "");
     modify_xen_mappings(start, start + pages * PAGE_SIZE, flags);
 
     return 0;

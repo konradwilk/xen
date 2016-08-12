@@ -103,6 +103,15 @@ typedef uint64_t	Elf64_Xword;
                       (ehdr).e_ident[EI_MAG2] == ELFMAG2 && \
                       (ehdr).e_ident[EI_MAG3] == ELFMAG3)
 
+/* e_flags */
+#define EF_ARM_EABI_MASK	0xff000000
+#define EF_ARM_EABI_UNKNOWN	0x00000000
+#define EF_ARM_EABI_VER1	0x01000000
+#define EF_ARM_EABI_VER2	0x02000000
+#define EF_ARM_EABI_VER3	0x03000000
+#define EF_ARM_EABI_VER4	0x04000000
+#define EF_ARM_EABI_VER5	0x05000000
+
 /* ELF Header */
 typedef struct elfhdr {
 	unsigned char	e_ident[EI_NIDENT]; /* ELF Identification */
@@ -362,6 +371,18 @@ typedef struct {
 #define R_X86_64_64	    	1	/* Direct 64 bit  */
 #define R_X86_64_PC32		2	/* PC relative 32 bit signed */
 #define R_X86_64_PLT32		4	/* 32 bit PLT address */
+
+/*
+ * ARM32 relocation types. See
+ * http://infocenter.arm.com/help/topic/com.arm.doc.ihi0044f/IHI0044F_aaelf.pdf
+ */
+#define R_ARM_NONE              0
+#define R_ARM_ABS32             2
+#define R_ARM_REL32             3
+#define R_ARM_CALL              28
+#define R_ARM_JUMP24            29
+#define R_ARM_MOVW_ABS_NC       43
+#define R_ARM_MOVT_ABS          44
 
 /*
  * S - address of symbol.
