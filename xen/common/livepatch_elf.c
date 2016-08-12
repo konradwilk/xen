@@ -365,7 +365,22 @@ int livepatch_elf_perform_relocs(struct livepatch_elf *elf)
         }
 
         if ( r->sec->sh_type == SHT_RELA )
-            rc = arch_livepatch_perform_rela(elf, base, r);
+        {
+            rc = 0;
+
+            if ( !r->sec->sh_size )
+                continue;
+
+            if ( r->sec->sh_entsize < sizeof(Elf_RelA) ||
+                 r->sec->sh_size % r->sec->sh_entsize )
+            {
+                dprintk(XENLOG_ERR, LIVEPATCH "%s: Section relative header is corrupted!\n",
+                        elf->name);
+                rc = -EINVAL;
+            }
+            else
+                rc = arch_livepatch_perform_rela(elf, base, r);
+        }
         else /* SHT_REL */
             rc = arch_livepatch_perform_rel(elf, base, r);
 
