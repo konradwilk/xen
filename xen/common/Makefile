@@ -79,3 +79,7 @@ subdir-$(coverage) += gcov
 
 subdir-y += libelf
 subdir-$(CONFIG_HAS_DEVICE_TREE) += libfdt
+
+.PHONY: tests
+tests:
+	$(MAKE) -f $(BASEDIR)/Rules.mk -C test livepatch
