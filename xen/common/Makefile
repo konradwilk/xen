@@ -79,3 +79,9 @@ subdir-$(coverage) += gcov
 
 subdir-y += libelf
 subdir-$(CONFIG_HAS_DEVICE_TREE) += libfdt
+
+.PHONY: tests
+tests:
+ifeq ($(XEN_TARGET_ARCH),x86_64)
+	$(MAKE) -f $(BASEDIR)/Rules.mk -C test livepatch
+endif
