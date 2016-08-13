@@ -1779,7 +1779,7 @@ static void load_payload_fnc(void *unused)
         spin_lock(&payload_lock);
         rc = schedule_work(p, LIVEPATCH_ACTION_APPLY, 0);
         spin_unlock(&payload_lock);
-        check_for_livepatch_work();
+        //check_for_livepatch_work();
         dprintk(XENLOG_INFO, LIVEPATCH "%s: rc=%d (p->rc=%d)\n", __func__, rc, p->rc);
 
 }
