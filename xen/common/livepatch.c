@@ -774,6 +774,26 @@ static bool_t is_payload_symbol(const struct livepatch_elf *elf,
          !strncmp(sym->name, ".L", 2) )
         return 0;
 
+#ifdef CONFIG_ARM
+    /*
+     * - Mapping symbols - denote the "start of a sequence of bytes of the
+     *   appropiate type" to mark certain features - such as start of region
+     *   containing A64 ($x), ARM ($a), or Thumb instructions ($t); or data ($d)
+     *
+     * The format is either short: '$x' or long: '$x.<any>'. We do not
+     * need this and more importantly - each payload will contain this
+     * resulting in symbol collisions.
+     */
+    if ( *sym->name == '$' && sym->name[1] != '\0' )
+    {
+        char p = sym->name[1];
+        size_t len = strlen(sym->name);
+
+        if ( (len >= 3 && ( sym->name[2] == '.' )) || (len == 2) )
+            if ( p == 'x' || p == 'a' || p == 'd' || p == 't' )
+                return 0;
+    }
+#endif
     return 1;
 }
 
