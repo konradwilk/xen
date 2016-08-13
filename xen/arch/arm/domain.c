@@ -55,6 +55,11 @@ void idle_loop(void)
 
         do_tasklet();
         do_softirq();
+        /*
+         * We MUST be last (or before dsb, wfi). Otherwise after we get the
+         * softirq we would execute dsb,wfi (and sleep) and not patch.
+         */
+        check_for_livepatch_work();
     }
 }
 
