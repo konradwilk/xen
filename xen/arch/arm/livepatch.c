@@ -113,10 +113,11 @@ int arch_is_payload_symbol(const struct livepatch_elf *elf,
         if ( (len >= 3 && ( sym->name[2] == '.' )) || (len == 2) )
             if ( p == 'd' ||
 #ifdef CONFIG_ARM_32
-                 p == 'a' || p == 't' ||
+                 p == 'a' || p == 't'
 #else
-                 p == 'x')
+                 p == 'x'
 #endif
+               )
                 return 0;
     }
     return 1;
