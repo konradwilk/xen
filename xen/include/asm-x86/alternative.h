@@ -28,10 +28,9 @@ struct alt_instr {
 #define ALT_REPL_PTR(a)     __ALT_PTR(a, repl_offset)
 
 extern void add_nops(void *insns, unsigned int len);
-/* Similar to apply_alternatives except it can be run with IRQs enabled. */
-extern void apply_alternatives_nocheck(struct alt_instr *start,
-                                       struct alt_instr *end);
+/* Similar to apply_alternatives_boot except it can be run with IRQs enabled. */
 extern void apply_alternatives(struct alt_instr *start, struct alt_instr *end);
+extern void apply_alternatives_boot(struct alt_instr *start, struct alt_instr *end);
 extern void alternative_instructions(void);
 
 #define OLDINSTR(oldinstr)      "661:\n\t" oldinstr "\n662:\n"
