@@ -94,23 +94,27 @@ static int __apply_alternatives(const struct alt_region *region)
 {
     const struct alt_instr *alt;
     const u32 *origptr, *replptr;
-    u32 *writeptr, *writemap;
+    u32 *writeptr, *writemap = NULL;
     mfn_t text_mfn = _mfn(virt_to_mfn(_stext));
     unsigned int text_order = get_order_from_bytes(_end - _start);
 
     printk(XENLOG_INFO "alternatives: Patching kernel code\n");
 
-    /*
-     * The text section is read-only. So re-map Xen to be able to patch
-     * the code.
-     */
-    writemap = __vmap(&text_mfn, 1 << text_order, 1, 1, PAGE_HYPERVISOR,
-                      VMAP_DEFAULT);
-    if ( !writemap )
+    if ( region->begin >= __alt_instructions &&
+         region->end <= __alt_instructions_end )
     {
-        printk(XENLOG_ERR "alternatives: Unable to map the text section (size %u)\n",
-               1 << text_order);
-        return -ENOMEM;
+        /*
+        * The text section is read-only. So re-map Xen to be able to patch
+        * the code.
+        */
+        writemap = __vmap(&text_mfn, 1 << text_order, 1, 1, PAGE_HYPERVISOR,
+                          VMAP_DEFAULT);
+        if ( !writemap )
+        {
+            printk(XENLOG_ERR "alternatives: Unable to map the text section (size %u)\n",
+                   1 << text_order);
+            return -ENOMEM;
+        }
     }
 
     for ( alt = region->begin; alt < region->end; alt++ )
@@ -124,8 +128,11 @@ static int __apply_alternatives(const struct alt_region *region)
         BUG_ON(alt->alt_len != alt->orig_len);
 
         origptr = ALT_ORIG_PTR(alt);
-        writeptr = origptr - (u32 *)_start + writemap;
         replptr = ALT_REPL_PTR(alt);
+        if ( writemap )
+            writeptr = origptr - (u32 *)_start + writemap;
+        else
+            writeptr = (u32 *)origptr;
 
         nr_inst = alt->alt_len / sizeof(insn);
 
@@ -143,7 +150,8 @@ static int __apply_alternatives(const struct alt_region *region)
     /* Nuke the instruction cache */
     invalidate_icache();
 
-    vunmap(writemap);
+    if ( writemap )
+        vunmap(writemap);
 
     return 0;
 }
