@@ -71,7 +71,15 @@ static int elf_resolve_sections(struct livepatch_elf *elf, const void *data)
         delta = elf->hdr->e_shoff + i * elf->hdr->e_shentsize;
 
         sec[i].sec = data + delta;
-
+        /*
+         * Some architectures REQUIRE section alignment to be word-size.
+         */
+        if ( sec[i].sec->sh_addralign % sizeof(uint32_t) )
+        {
+            dprintk(XENLOG_DEBUG, LIVEPATCH "%s: Adjusting aligment for section [%u]\n",
+                    elf->name, i);
+            ((Elf_Shdr *)sec[i].sec)->sh_addralign = 4;
+        }
         delta = sec[i].sec->sh_offset;
         /*
          * N.B. elf_resolve_section_names, elf_get_sym skip this check as
