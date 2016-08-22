@@ -29,6 +29,12 @@ static inline void write_pte(lpae_t *p, lpae_t pte)
  * inline asm operand) */
 #define __clean_and_invalidate_dcache_one(R) STORE_CP32(R, DCCIMVAC)
 
+/* Invalidate all instruction caches in Inner Shareable domain to PoU */
+static inline void invalidate_icache(void)
+{
+    asm volatile (CMD_CP32(ICIALLUIS));
+}
+
 /*
  * Flush all hypervisor mappings from the TLB and branch predictor of
  * the local processor.
