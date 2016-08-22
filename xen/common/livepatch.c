@@ -1088,6 +1088,7 @@ static int livepatch_list(xen_sysctl_livepatch_list_t *list)
 static int apply_payload(struct payload *data)
 {
     unsigned int i;
+    int rc;
 
     printk(XENLOG_INFO LIVEPATCH "%s: Applying %u functions\n",
             data->name, data->nfuncs);
@@ -1096,7 +1097,12 @@ static int apply_payload(struct payload *data)
     for ( i = 0; i < data->n_bss; i++ )
         memset(data->bss[i], 0, data->bss_size[i]);
 
-    arch_livepatch_quiesce();
+    rc = arch_livepatch_quiesce();
+    if ( rc )
+    {
+        printk(XENLOG_ERR LIVEPATCH "%s: unable to quiesce!\n", data->name);
+        return rc;
+    }
 
     /*
      * Since we are running with IRQs disabled and the hooks may call common
@@ -1128,10 +1134,16 @@ static int apply_payload(struct payload *data)
 static int revert_payload(struct payload *data)
 {
     unsigned int i;
+    int rc;
 
     printk(XENLOG_INFO LIVEPATCH "%s: Reverting\n", data->name);
 
-    arch_livepatch_quiesce();
+    rc = arch_livepatch_quiesce();
+    if ( rc )
+    {
+        printk(XENLOG_ERR LIVEPATCH "%s: unable to quiesce!\n", data->name);
+        return rc;
+    }
 
     for ( i = 0; i < data->nfuncs; i++ )
         arch_livepatch_revert_jmp(&data->funcs[i]);
