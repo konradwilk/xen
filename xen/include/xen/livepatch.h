@@ -44,6 +44,7 @@ unsigned long livepatch_symbols_lookup_by_name(const char *symname);
 bool_t is_patch(const void *addr);
 
 /* Arch hooks. */
+int arch_verify_insn_length(unsigned long len);
 int arch_livepatch_verify_elf(const struct livepatch_elf *elf);
 int arch_livepatch_perform_rel(struct livepatch_elf *elf,
                                const struct livepatch_elf_sec *base,
