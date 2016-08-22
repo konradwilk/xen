@@ -14,6 +14,12 @@
 #define NULL ((void*)0)
 #endif
 
+#define U16_MAX         ((u16)~0U)
+#define S16_MAX         ((s16)(U16_MAX>>1))
+#define S16_MIN         ((s16)(-S16_MAX - 1))
+#define U32_MAX         ((u32)~0U)
+#define S32_MAX         ((s32)(U32_MAX>>1))
+#define S32_MIN         ((s32)(-S32_MAX - 1))
 #define INT_MAX         ((int)(~0U>>1))
 #define INT_MIN         (-INT_MAX - 1)
 #define UINT_MAX        (~0U)

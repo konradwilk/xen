@@ -1103,7 +1103,6 @@ static int apply_payload(struct payload *data)
         printk(XENLOG_ERR LIVEPATCH "%s: unable to quiesce!\n", data->name);
         return rc;
     }
-
     /*
      * Since we are running with IRQs disabled and the hooks may call common
      * code - which expects certain spinlocks to run with IRQs enabled - we
