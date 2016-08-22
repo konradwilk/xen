@@ -119,13 +119,6 @@ int arch_is_payload_symbol(const struct livepatch_elf *elf,
     return 1;
 }
 
-int arch_livepatch_perform_rel(struct livepatch_elf *elf,
-                               const struct livepatch_elf_sec *base,
-                               const struct livepatch_elf_sec *rela)
-{
-    return -ENOSYS;
-}
-
 int arch_livepatch_secure(const void *va, unsigned int pages, enum va_type type)
 {
     unsigned long start = (unsigned long)va;

@@ -3,7 +3,11 @@ include $(XEN_ROOT)/Config.mk
 ifeq ($(XEN_TARGET_ARCH),x86_64)
 OBJCOPY_MAGIC := -I binary -O elf64-x86-64 -B i386:x86-64
 else
-OBJCOPY_MAGIC := -I binary -O elf64-littleaarch64 -B aarch64
+  ifeq ($(XEN_TARGET_ARCH),arm32)
+  OBJCOPY_MAGIC := -I binary -O elf32-littlearm -B arm
+  else
+  OBJCOPY_MAGIC := -I binary -O elf64-littleaarch64 -B aarch64
+  endif
 endif
 
 CODE_ADDR=$(shell nm --defined $(1) | grep $(2) | awk '{print "0x"$$1}')
