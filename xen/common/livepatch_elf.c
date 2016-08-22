@@ -72,6 +72,16 @@ static int elf_resolve_sections(struct livepatch_elf *elf, const void *data)
 
         sec[i].sec = data + delta;
 
+        /*
+         * Some architectures REQUIRE section alignment to be the natural size.
+         */
+        if ( sec[i].sec->sh_addralign % sizeof(unsigned long) )
+        {
+            dprintk(XENLOG_DEBUG, LIVEPATCH "%s: Adjusting aligment for section [%u]\n",
+                    elf->name, i);
+            ((Elf_Shdr *)sec[i].sec)->sh_addralign = sizeof(unsigned long);
+        }
+
         delta = sec[i].sec->sh_offset;
         /*
          * N.B. elf_resolve_section_names, elf_get_sym skip this check as
