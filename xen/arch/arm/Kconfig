@@ -45,8 +45,12 @@ config ACPI
 config HAS_GICV3
 	bool
 
+config HAS_ALTERNATIVE
+	bool
+
 config ALTERNATIVE
 	bool
+	select HAS_ALTERNATIVE
 
 endmenu
 
