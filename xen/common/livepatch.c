@@ -3,6 +3,7 @@
  *
  */
 
+#include <xen/config.h>
 #include <xen/cpu.h>
 #include <xen/elf.h>
 #include <xen/err.h>
@@ -684,7 +685,7 @@ static int prepare_payload(struct payload *payload,
                                   sizeof(*region->frame[i].bugs);
     }
 
-#ifndef CONFIG_ARM
+#ifdef CONFIG_ALTERNATIVE
     sec = livepatch_elf_sec_by_name(elf, ".altinstructions");
     if ( sec )
     {
@@ -715,7 +716,9 @@ static int prepare_payload(struct payload *payload,
         }
         apply_alternatives(start, end);
     }
+#endif
 
+#ifdef CONFIG_HAS_EX_TABLE
     sec = livepatch_elf_sec_by_name(elf, ".ex_table");
     if ( sec )
     {
