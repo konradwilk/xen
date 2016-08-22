@@ -237,13 +237,32 @@ static const char *livepatch_symbols_lookup(unsigned long addr,
 static int resolve_old_address(struct livepatch_func *f,
                                const struct livepatch_elf *elf)
 {
+    const char *s = f->name;
+    char *plus = NULL;
+    unsigned long offset = 0;
+
     if ( f->old_addr )
         return 0;
 
-    f->old_addr = (void *)symbols_lookup_by_name(f->name);
+    /* +<offset> */
+    plus = strchr(s, '+');
+    if ( plus )
+    {
+        const char *endp;
+
+        offset = simple_strtoul(plus + 1, &endp, 16);
+
+        if ( *endp != '\0' )
+            return -EINVAL;
+
+        /* Temporary mutiliation so that symbol lookup works. */
+        *plus = '\0';
+    }
+
+    f->old_addr = (void *)symbols_lookup_by_name(s);
     if ( !f->old_addr )
     {
-        f->old_addr = (void *)livepatch_symbols_lookup_by_name(f->name);
+        f->old_addr = (void *)livepatch_symbols_lookup_by_name(s);
         if ( !f->old_addr )
         {
             dprintk(XENLOG_ERR, LIVEPATCH "%s: Could not resolve old address of %s\n",
@@ -251,6 +270,14 @@ static int resolve_old_address(struct livepatch_func *f,
             return -ENOENT;
         }
     }
+
+    /* Lets put the '+' back in the symbol name. */
+    if ( plus )
+    {
+        *plus = '+';
+        f->old_addr += offset;
+    }
+
     dprintk(XENLOG_DEBUG, LIVEPATCH "%s: Resolved old address %s => %p\n",
             elf->name, f->name, f->old_addr);
 
