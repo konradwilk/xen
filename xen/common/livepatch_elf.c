@@ -86,7 +86,16 @@ static int elf_resolve_sections(struct livepatch_elf *elf, const void *data)
                     delta < sizeof(Elf_Ehdr) ? "at ELF header" : "is past end");
             return -EINVAL;
         }
-
+        else if ( !(sec[i].sec->sh_flags & SHF_EXECINSTR) &&
+                  (sec[i].sec->sh_flags & SHF_WRITE) &&
+                  sec[i].sec->sh_type == SHT_NOBITS &&
+                  sec[i].sec->sh_size > MB(2) )
+        {
+            /* Arbitrary limit. */
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: Section [%u] .bss is bigger than 2MB!\n",
+                    elf->name, i);
+            return -EINVAL;
+        }
         sec[i].data = data + delta;
         /* Name is populated in elf_resolve_section_names. */
         sec[i].name = NULL;
