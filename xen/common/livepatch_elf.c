@@ -244,6 +244,7 @@ static int elf_get_sym(struct livepatch_elf *elf, const void *data)
     for ( i = 1; i < nsym; i++ )
     {
         const Elf_Sym *s = symtab_sec->data + symtab_sec->sec->sh_entsize * i;
+        int rc;
 
         delta = s->st_name;
         /* Boundary check within the .strtab. */
@@ -256,6 +257,14 @@ static int elf_get_sym(struct livepatch_elf *elf, const void *data)
 
         sym[i].sym = s;
         sym[i].name = strtab_sec->data + delta;
+        /* On ARM we should NEVER see $t* symbols. */
+        rc = arch_livepatch_symbol_check(elf, sym);
+        if ( rc )
+        {
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: Symbol '%s' should not be in payload!\n",
+                    elf->name, sym[i].name);
+            return rc;
+        }
     }
     elf->nsym = nsym;
 

@@ -116,6 +116,20 @@ bool_t arch_livepatch_symbol_ok(const struct livepatch_elf *elf,
     return true;
 }
 
+int arch_livepatch_symbol_check(const struct livepatch_elf *elf,
+                                const struct livepatch_elf_sym *sym)
+{
+#ifdef CONFIG_ARM_32
+    /*
+     * Xen does not use Thumb instructions - and we should not see any of
+     * them. If we do, abort.
+     */
+    if ( *sym->name == '$' && sym->name[1] == 't' )
+        return -EINVAL;
+#endif
+    return 0;
+}
+
 int arch_livepatch_perform_rel(struct livepatch_elf *elf,
                                const struct livepatch_elf_sec *base,
                                const struct livepatch_elf_sec *rela)
