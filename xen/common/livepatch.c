@@ -586,6 +586,10 @@ static int prepare_payload(struct payload *payload,
         rc = resolve_old_address(f, elf);
         if ( rc )
             return rc;
+
+        rc = arch_livepatch_verify_distance(f);
+        if ( rc )
+            return rc;
     }
 
     sec = livepatch_elf_sec_by_name(elf, ".livepatch.hooks.load");
