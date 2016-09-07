@@ -1488,9 +1488,13 @@ static int build_id_dep(struct payload *payload, bool_t internal)
     if ( payload->dep.len != len ||
          memcmp(id, payload->dep.p, len) )
     {
+#ifndef CONFIG_ARM
         dprintk(XENLOG_ERR, "%s%s: check against %s build-id failed!\n",
                 LIVEPATCH, payload->name, name);
         return -EINVAL;
+#else
+        return 0;
+#endif
     }
 
     return 0;
@@ -1690,11 +1694,32 @@ static void livepatch_printall(unsigned char key)
     spin_unlock(&payload_lock);
 }
 
+#ifdef CONFIG_ARM
+static int increase;
+static struct timer test_timer;
+
+static void print_extra_version(void *unused)
+{
+    printk(XENLOG_INFO LIVEPATCH "%s\n", xen_extra_version());
+    livepatch_printall('x');
+
+    set_timer(&test_timer, NOW() + SECONDS(10 + increase++));
+}
+#endif
+
 static int __init livepatch_init(void)
 {
     register_keyhandler('x', livepatch_printall, "print livepatch info", 1);
 
     arch_livepatch_init();
+#ifdef CONFIG_ARM
+    {
+        printk(XENLOG_INFO LIVEPATCH ": %s\n", xen_extra_version());
+
+        init_timer(&test_timer, print_extra_version, NULL, 0);
+        set_timer(&test_timer, NOW() + SECONDS(1));
+    }
+#endif
     return 0;
 }
 __initcall(livepatch_init);
