@@ -40,7 +40,12 @@
 #define ARM32_WORKAROUND_766422 2
 #define ARM64_WORKAROUND_834220 3
 
+#ifdef CONFIG_LIVEPATCH
+#define LIVEPATCH_FEATURE   4
+#define ARM_NCAPS           5
+#else
 #define ARM_NCAPS           4
+#endif
 
 #ifndef __ASSEMBLY__
 
