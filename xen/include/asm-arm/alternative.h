@@ -165,6 +165,8 @@ static inline int apply_alternatives(void *start, size_t lenght)
     return 0;
 }
 
+#define ALTERNATIVE(oldinstr, newinstr, ...) ""
+
 #endif
 
 #endif /* __ASM_ALTERNATIVE_H */
