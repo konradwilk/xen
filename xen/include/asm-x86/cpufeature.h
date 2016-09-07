@@ -34,6 +34,7 @@ XEN_CPUFEATURE(MFENCE_RDTSC,    (FSCAPINTS+0)*32+ 9) /* MFENCE synchronizes RDTS
 
 /* An alias of a feature we know is always going to be present. */
 #define X86_FEATURE_ALWAYS      X86_FEATURE_LM
+#define LIVEPATCH_FEATURE       X86_FEATURE_ALWAYS
 
 #if !defined(__ASSEMBLY__) && !defined(X86_FEATURES_ONLY)
 #include <xen/bitops.h>

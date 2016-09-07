@@ -20,7 +20,6 @@ const char *xen_hello_world(void)
     unsigned long tmp;
     int rc;
 
-    alternative(ASM_NOP8, ASM_NOP1, X86_FEATURE_LM);
     /*
      * Any BUG, or WARN_ON will contain symbol and payload name. Furthermore
      * exceptions will be caught and processed properly.
@@ -28,8 +27,11 @@ const char *xen_hello_world(void)
     rc = __get_user(tmp, non_canonical_addr);
     BUG_ON(rc != -EFAULT);
 #endif
-#ifdef CONFIG_ARM_64
-    asm(ALTERNATIVE("nop", "nop", ARM64_WORKAROUND_CLEAN_CACHE));
+#ifdef CONFIG_ARM
+    asm(ALTERNATIVE("nop", "nop", LIVEPATCH_FEATURE));
+#endif
+#ifdef CONFIG_X86
+    asm(ALTERNATIVE(ASM_NOP8, ASM_NOP1, LIVEPATCH_FEATURE));
 #endif
     return "Hello World";
 }
