@@ -12,6 +12,7 @@ struct livepatch_elf_sym;
 struct xen_sysctl_livepatch_op;
 
 #include <xen/elfstructs.h>
+#include <xen/errno.h> /* For -ENOSYS or -EOVERFLOW */
 #ifdef CONFIG_LIVEPATCH
 
 /*
@@ -66,7 +67,24 @@ int arch_livepatch_secure(const void *va, unsigned int pages, enum va_type types
 void arch_livepatch_init(void);
 
 #include <public/sysctl.h> /* For struct livepatch_func. */
+#include <asm/livepatch.h> /* For LIVEPATCH_ARCH_RANGE. */
 int arch_livepatch_verify_func(const struct livepatch_func *func);
+
+static inline int arch_livepatch_verify_distance(const struct livepatch_func *func)
+{
+    long offset;
+    long range = (long)LIVEPATCH_ARCH_RANGE;
+
+    if ( !func->new_addr ) /* Ignore NOPs. */
+        return 0;
+
+    offset = ((long)func->old_addr - (long)func->new_addr);
+    if ( offset < -range || offset >= range )
+        return -EOVERFLOW;
+
+    return 0;
+}
+
 /*
  * These functions are called around the critical region patching live code,
  * for an architecture to take make appropratie global state adjustments.
@@ -91,7 +109,6 @@ void arch_livepatch_unmask(void);
 #define init_or_livepatch_data        __initdata
 #define init_or_livepatch             __init
 
-#include <xen/errno.h> /* For -ENOSYS */
 static inline int livepatch_op(struct xen_sysctl_livepatch_op *op)
 {
     return -ENOSYS;

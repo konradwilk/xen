@@ -6,6 +6,8 @@
 #ifndef __XEN_ARM_LIVEPATCH_H__
 #define __XEN_ARM_LIVEPATCH_H__
 
+#include <xen/sizes.h> /* For SZ_* macros. */
+
 /* On ARM32,64 instructions are always 4 bytes long. */
 #define PATCH_INSN_SIZE 4
 
@@ -14,6 +16,12 @@
  * normal va are write protected.
  */
 extern void *vmap_of_xen_text;
+
+#ifdef CONFIG_ARM_32
+#define LIVEPATCH_ARCH_RANGE SZ_32M
+#else
+#define LIVEPATCH_ARCH_RANGE SZ_128M
+#endif
 
 #endif /* __XEN_ARM_LIVEPATCH_H__ */
 
