@@ -38,7 +38,7 @@ void __init warning_print(void)
         for ( j = 0; j < 100; j++ )
         {
             process_pending_softirqs();
-            mdelay(10);
+            //mdelay(10);
         }
     }
     printk("\n");

@@ -1698,9 +1698,43 @@ static void livepatch_printall(unsigned char key)
 static int increase;
 static struct timer test_timer;
 
+typedef const char *(*hello_world_func)(void);
 static void print_extra_version(void *unused)
 {
-    printk(XENLOG_INFO LIVEPATCH "%s\n", xen_extra_version());
+    const char *s;
+    unsigned long p;
+    unsigned int i;
+    int dump_stack = 1;
+    //const char *(*func)(void) = NULL;
+    hello_world_func func;
+
+    p = symbols_lookup_by_name("xen_extra_version");
+    dprintk(XENLOG_DEBUG, "%lx\n", p);
+    for ( i = 0; i < 7; i++)
+    {
+        union {
+            uint32_t insn;
+            uint8_t a[4];
+        } _u;
+
+        memcpy(&_u, (uint32_t *)p + i, sizeof(_u));
+        if ( _u.insn == 0xe1200071 )
+        {
+            dprintk(XENLOG_DEBUG, "%p: has poison\n", (uint32_t *)p+i);
+            dump_stack=1;
+        }
+        dprintk(XENLOG_DEBUG, "%p: %02x %02x %02x %02x\n", (uint32_t *)p+i,
+                _u.a[0], _u.a[1], _u.a[2], _u.a[3]);
+    }
+    /* Get a stack trace. */
+    WARN_ON(dump_stack);
+    printk(XENLOG_INFO LIVEPATCH "Calling 0x%lx\n", p);
+    func = (void *)p;
+    s = func();
+    printk(XENLOG_INFO LIVEPATCH "Got: %s\n", s);
+
+    s = xen_extra_version();
+    printk(XENLOG_INFO LIVEPATCH "Got: %s\n", s);
     livepatch_printall('x');
 
     set_timer(&test_timer, NOW() + SECONDS(10 + increase++));

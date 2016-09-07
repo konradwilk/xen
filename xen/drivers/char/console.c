@@ -43,7 +43,7 @@ static unsigned char __read_mostly opt_conswitch[3] = "a";
 string_param("conswitch", opt_conswitch);
 
 /* sync_console: force synchronous console output (useful for debugging). */
-static bool_t __initdata opt_sync_console;
+static bool_t __initdata opt_sync_console = 1;
 boolean_param("sync_console", opt_sync_console);
 static const char __initconst warning_sync_console[] =
     "WARNING: CONSOLE OUTPUT IS SYNCHRONOUS\n"
