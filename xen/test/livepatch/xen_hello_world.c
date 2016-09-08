@@ -12,7 +12,7 @@
 
 #include <public/sysctl.h>
 
-static char hello_world_patch_this_fnc[] = "xen_extra_version";
+static const char hello_world_patch_this_fnc[] = "xen_extra_version";
 extern const char *xen_hello_world(void);
 /*
  * .bss is only cleared once - during upload. Apply/revert/apply will result
