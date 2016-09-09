@@ -995,7 +995,7 @@ void free_init_memory(void)
     paddr_t pa = virt_to_maddr(__init_begin);
     unsigned long len = __init_end - __init_begin;
     set_pte_flags_on_range(__init_begin, len, mg_rw);
-    memset(__init_begin, 0xcc, len);
+    memset(__init_begin, 0xef, len);
     set_pte_flags_on_range(__init_begin, len, mg_clear);
     init_domheap_pages(pa, pa + len);
     printk("Freed %ldkB init memory.\n", (long)(__init_end-__init_begin)>>10);
