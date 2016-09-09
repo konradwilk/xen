@@ -875,6 +875,12 @@ section and the new function will reference the new string in the new
 
 This is implemented in the Xen Project hypervisor.
 
+Note that the .bss section is only cleared when the ELF payload is uploaded.
+Subsequent apply/revert/apply operation do no clear the .bss (or reset the
+.data to what it was when loaded). Hence it is the responsibility of the
+creator of the payload to reset these values to known good state if they
+depend on them having certain values at apply/revert states.
+
 ### Security
 
 Only the privileged domain should be allowed to do this operation.
