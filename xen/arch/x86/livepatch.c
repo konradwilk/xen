@@ -44,7 +44,7 @@ void arch_livepatch_apply_jmp(struct livepatch_func *func)
 {
     uint8_t *old_ptr;
     uint8_t insn[sizeof(func->opaque)];
-    size_t len;
+    unsigned int len;
 
     old_ptr = func->old_addr;
     len = arch_livepatch_insn_len(func);
