@@ -52,6 +52,8 @@ struct livepatch_build_id {
 struct payload {
     uint32_t state;                      /* One of the LIVEPATCH_STATE_*. */
     int32_t rc;                          /* 0 or -XEN_EXX. */
+    bool_t reverted;                     /* Whether it was reverted. */
+    bool_t safe_to_reapply;              /* Can apply safely after revert. */
     struct list_head list;               /* Linked to 'payload_list'. */
     const void *text_addr;               /* Virtual address of .text. */
     size_t text_size;                    /* .. and its size. */
@@ -308,7 +310,7 @@ static void calc_section(const struct livepatch_elf_sec *sec, size_t *size,
 static int move_payload(struct payload *payload, struct livepatch_elf *elf)
 {
     void *text_buf, *ro_buf, *rw_buf;
-    unsigned int i;
+    unsigned int i, rw_buf_sec, rw_buf_cnt = 0;
     size_t size = 0;
     unsigned int *offset;
     int rc = 0;
@@ -381,7 +383,11 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
             if ( elf->sec[i].sec->sh_flags & SHF_EXECINSTR )
                 buf = text_buf;
             else if ( elf->sec[i].sec->sh_flags & SHF_WRITE )
+            {
                 buf = rw_buf;
+                rw_buf_sec = i;
+                rw_buf_cnt++;
+            }
             else
                 buf = ro_buf;
 
@@ -402,6 +408,9 @@ static int move_payload(struct payload *payload, struct livepatch_elf *elf)
         }
     }
 
+    if ( rw_buf_cnt == 1 &&
+         !strcmp(elf->sec[rw_buf_sec].name, ELF_LIVEPATCH_FUNC) )
+        payload->safe_to_reapply = true;
  out:
     xfree(offset);
 
@@ -1057,6 +1066,7 @@ static int revert_payload(struct payload *data)
     list_del_rcu(&data->applied_list);
     unregister_virtual_region(&data->region);
 
+    data->reverted = true;
     return 0;
 }
 
@@ -1438,6 +1448,19 @@ static int livepatch_action(xen_sysctl_livepatch_action_t *action)
     case LIVEPATCH_ACTION_APPLY:
         if ( data->state == LIVEPATCH_STATE_CHECKED )
         {
+            /*
+             * It is unsafe to apply an reverted as the .data may not be in
+             * in pristine condition. Hence MUST unload and then apply patch
+             * again.
+             */
+            if ( data->reverted && !data->safe_to_reapply )
+            {
+                dprintk(XENLOG_ERR, "%s%s: can't revert as payload has .data. Please unload!\n",
+                        LIVEPATCH, data->name);
+                data->rc = -EINVAL;
+                break;
+            }
+
             rc = build_id_dep(data, !!list_empty(&applied_list));
             if ( rc )
                 break;
