@@ -42,9 +42,6 @@ config ACPI
 	  Advanced Configuration and Power Interface (ACPI) support for Xen is
 	  an alternative to device tree on ARM64.
 
-config HAS_ALTERNATIVE
-	bool
-
 config HAS_GICV3
 	bool
 
