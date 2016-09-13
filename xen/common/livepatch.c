@@ -87,8 +87,8 @@ struct livepatch_work
                                     check_for_livepatch_work. */
     uint32_t timeout;            /* Timeout to do the operation. */
     struct payload *data;        /* The payload on which to act. */
-    volatile bool_t do_work;     /* Signals work to do. */
-    volatile bool_t ready;       /* Signals all CPUs synchronized. */
+    volatile bool do_work;       /* Signals work to do. */
+    volatile bool ready;         /* Signals all CPUs synchronized. */
     unsigned int cmd;            /* Action request: LIVEPATCH_ACTION_* */
 };
 
@@ -101,7 +101,7 @@ static struct livepatch_work livepatch_work;
  * would hammer a global livepatch_work structure on every guest VMEXIT.
  * Having an per-cpu lessens the load.
  */
-static DEFINE_PER_CPU(bool_t, work_to_do);
+static DEFINE_PER_CPU(bool, work_to_do);
 
 static int get_name(const xen_livepatch_name_t *name, char *n)
 {
@@ -137,10 +137,10 @@ static int verify_payload(const xen_sysctl_livepatch_upload_t *upload, char *n)
     return 0;
 }
 
-bool_t is_patch(const void *ptr)
+bool is_patch(const void *ptr)
 {
     const struct payload *data;
-    bool_t r = 0;
+    bool r = false;
 
     /*
      * Only RCU locking since this list is only ever changed during apply
@@ -156,7 +156,7 @@ bool_t is_patch(const void *ptr)
              (ptr >= data->text_addr &&
               ptr < (data->text_addr + data->text_size)) )
         {
-            r = 1;
+            r = true;
             break;
         }
 
@@ -716,12 +716,12 @@ static int prepare_payload(struct payload *payload,
     return 0;
 }
 
-static bool_t is_payload_symbol(const struct livepatch_elf *elf,
-                                const struct livepatch_elf_sym *sym)
+static bool is_payload_symbol(const struct livepatch_elf *elf,
+                              const struct livepatch_elf_sym *sym)
 {
     if ( sym->sym->st_shndx == SHN_UNDEF ||
          sym->sym->st_shndx >= elf->hdr->e_shnum )
-        return 0;
+        return false;
 
     /*
      * The payload is not a final image as we dynmically link against it.
@@ -731,11 +731,11 @@ static bool_t is_payload_symbol(const struct livepatch_elf *elf,
      *   loaded.
      */
     if ( !(elf->sec[sym->sym->st_shndx].sec->sh_flags & SHF_ALLOC) )
-        return 0;
+        return false;
 
     /* - And ignore empty symbols (\0). */
     if ( *sym->name == '\0' )
-        return 0;
+        return false;
 
     /*
      * - For SHF_MERGE - ignore local symbols referring to mergeable sections.
@@ -747,7 +747,7 @@ static bool_t is_payload_symbol(const struct livepatch_elf *elf,
      */
     if ( (elf->sec[sym->sym->st_shndx].sec->sh_flags & SHF_MERGE) &&
          !strncmp(sym->name, ".L", 2) )
-        return 0;
+        return false;
 
     return arch_livepatch_symbol_ok(elf, sym);
 }
@@ -791,7 +791,7 @@ static int build_symbol_table(struct payload *payload,
             symtab[nsyms].name = strtab + strtab_len;
             symtab[nsyms].size = elf->sym[i].sym->st_size;
             symtab[nsyms].value = elf->sym[i].sym->st_value;
-            symtab[nsyms].new_symbol = 0; /* May be overwritten below. */
+            symtab[nsyms].new_symbol = false; /* May be overwritten below. */
             strtab_len += strlcpy(strtab + strtab_len, elf->sym[i].name,
                                   KSYM_NAME_LEN) + 1;
             nsyms++;
@@ -800,13 +800,13 @@ static int build_symbol_table(struct payload *payload,
 
     for ( i = 0; i < nsyms; i++ )
     {
-        bool_t found = 0;
+        bool found = 0;
 
         for ( j = 0; j < payload->nfuncs; j++ )
         {
             if ( symtab[i].value == (unsigned long)payload->funcs[j].new_addr )
             {
-                found = 1;
+                found = true;
                 break;
             }
         }
@@ -822,7 +822,7 @@ static int build_symbol_table(struct payload *payload,
                 xfree(strtab);
                 return -EEXIST;
             }
-            symtab[i].new_symbol = 1;
+            symtab[i].new_symbol = true;
             dprintk(XENLOG_DEBUG, LIVEPATCH "%s: new symbol %s\n",
                      elf->name, symtab[i].name);
         }
@@ -1234,12 +1234,12 @@ static int schedule_work(struct payload *data, uint32_t cmd, uint32_t timeout)
 
     atomic_set(&livepatch_work.semaphore, -1);
 
-    livepatch_work.ready = 0;
+    livepatch_work.ready = false;
 
     smp_wmb();
 
-    livepatch_work.do_work = 1;
-    this_cpu(work_to_do) = 1;
+    livepatch_work.do_work = true;
+    this_cpu(work_to_do) = true;
 
     put_cpu_maps();
 
@@ -1268,7 +1268,7 @@ static int livepatch_spin(atomic_t *counter, s_time_t timeout,
         rc = -EBUSY;
         livepatch_work.data->rc = rc;
         smp_wmb();
-        livepatch_work.do_work = 0;
+        livepatch_work.do_work = false;
     }
 
     return rc;
@@ -1299,7 +1299,7 @@ void check_for_livepatch_work(void)
     /* In case we aborted, other CPUs can skip right away. */
     if ( !livepatch_work.do_work )
     {
-        per_cpu(work_to_do, cpu) = 0;
+        per_cpu(work_to_do, cpu) = false;
         return;
     }
 
@@ -1316,15 +1316,15 @@ void check_for_livepatch_work(void)
         {
             printk(XENLOG_ERR LIVEPATCH "%s: CPU%u - unable to get cpu_maps lock!\n",
                    p->name, cpu);
-            per_cpu(work_to_do, cpu) = 0;
+            per_cpu(work_to_do, cpu) = false;
             livepatch_work.data->rc = -EBUSY;
             smp_wmb();
-            livepatch_work.do_work = 0;
+            livepatch_work.do_work = false;
             /*
              * Do NOT decrement livepatch_work.semaphore down - as that may cause
              * the other CPU (which may be at this point ready to increment it)
              * to assume the role of master and then needlessly time out
-             * out (as do_work is zero).
+             * out (as do_work is false).
              */
             return;
         }
@@ -1353,7 +1353,7 @@ void check_for_livepatch_work(void)
          * 'semaphore' before we set it to zero.
          */
         smp_wmb();
-        livepatch_work.ready = 1;
+        livepatch_work.ready = true;
 
         if ( !livepatch_spin(&livepatch_work.semaphore, timeout, cpus, "IRQ") )
         {
@@ -1368,8 +1368,8 @@ void check_for_livepatch_work(void)
  abort:
         arch_livepatch_unmask();
 
-        per_cpu(work_to_do, cpu) = 0;
-        livepatch_work.do_work = 0;
+        per_cpu(work_to_do, cpu) = false;
+        livepatch_work.do_work = false;
 
         /* put_cpu_maps has an barrier(). */
         put_cpu_maps();
@@ -1399,7 +1399,7 @@ void check_for_livepatch_work(void)
         arch_livepatch_post_action();
         local_irq_restore(flags);
 
-        per_cpu(work_to_do, cpu) = 0;
+        per_cpu(work_to_do, cpu) = false;
     }
 }
 
