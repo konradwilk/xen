@@ -311,7 +311,8 @@ int livepatch_elf_resolve_symbols(struct livepatch_elf *elf)
             }
 
             /* Matches 'move_payload' which ignores such sections. */
-            if ( !(elf->sec[idx].sec->sh_flags & SHF_ALLOC) )
+            if ( !(elf->sec[idx].sec->sh_flags & SHF_ALLOC) ||
+                 elf->sec[idx].sec->sh_size == 0 )
                 break;
 
             st_value += (unsigned long)elf->sec[idx].load_addr;
