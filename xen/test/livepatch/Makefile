@@ -104,6 +104,8 @@ xen_nop.o: config.h
 .PHONY: $(LIVEPATCH_NOP)
 $(LIVEPATCH_NOP): xen_nop.o note.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_NOP) $^
+	$(OBJCOPY) --remove-section=.bss --remove-section=.data $@
+	$(OBJCOPY) --strip-unneeded $@
 
 .PHONY: livepatch
 livepatch: $(LIVEPATCH) $(LIVEPATCH_BYE) $(LIVEPATCH_REPLACE) $(LIVEPATCH_NOP)
