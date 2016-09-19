@@ -69,6 +69,28 @@ int arch_livepatch_verify_func(const struct livepatch_func *func)
     return 0;
 }
 
+void arch_livepatch_revert(const struct livepatch_func *func)
+{
+    uint32_t *new_ptr;
+    unsigned int i, len;
+
+    new_ptr = func->old_addr - (void *)_start + vmap_of_xen_text;
+    len = livepatch_insn_len(func) / sizeof(uint32_t);
+    for ( i = 0; i < len; i++ )
+    {
+        uint32_t insn;
+
+        memcpy(&insn, func->opaque + (i * sizeof(uint32_t)), ARCH_PATCH_INSN_SIZE);
+        /* PATCH! */
+        *(new_ptr + i) = insn;
+    }
+
+    /* There should not be _any_ aliasing using vmap's, but just in case. */
+    clean_and_invalidate_dcache_va_range(new_ptr, sizeof(*new_ptr) * len);
+    /* And definitly clear the old code. */
+    clean_and_invalidate_dcache_va_range(func->old_addr, sizeof(*new_ptr) * len);
+}
+
 void arch_livepatch_post_action(void)
 {
     /* arch_livepatch_revive has nuked the instruction cache. */
