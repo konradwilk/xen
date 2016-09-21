@@ -100,8 +100,11 @@ static int list_func(int argc, char *argv[])
         rc = xc_livepatch_list(xch, MAX_LEN, idx, info, name, len, &done, &left);
         if ( rc )
         {
-            fprintf(stderr, "Failed to list %d/%d: %d(%s)!\n",
-                    idx, left, errno, strerror(errno));
+            if ( errno == ENOSYS )
+                fprintf(stderr, "Hypervisor compiled without Xen Livepatching!\n");
+            else
+                fprintf(stderr, "Failed to list %d/%d: %d(%s)!\n",
+                        idx, left, errno, strerror(errno));
             break;
         }
         if ( !idx )
