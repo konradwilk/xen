@@ -72,6 +72,7 @@ $(TARGET): $(TARGET)-syms $(TARGET).axf
 	$(OBJCOPY) -O binary -S $< $@
 ifeq ($(CONFIG_ARM_64),y)
 	ln -sf $(notdir $@)  ../../$(notdir $@).efi
+	ln -sf $(notdir $@)-syms.map  ../../$(notdir $@).efi.map
 endif
 
 $(TARGET).axf: $(TARGET)-syms
