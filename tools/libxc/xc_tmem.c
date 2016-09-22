@@ -268,12 +268,23 @@ int xc_tmem_save(xc_interface *xch,
         return -1;
     if ( write_exact(io_fd, &minusone, sizeof(minusone)) )
         return -1;
+
+    IPRINTF("%s: %d, %d pools \n", __func__, dom, info.nr_pools);
+
     for ( i = 0; i < info.nr_pools; i++ )
     {
         uint32_t pagesize;
         int bufsize = 0;
         int checksum = 0;
         struct tmem_pool_info *pool = &pools[i];
+
+        IPRINTF("%s: %d/%d id=%d raw=%x %s%s %d %d, npages=%#lx\n", __func__, i, info.nr_pools, pool->id,
+                pool->flags.raw,
+                pool->flags.u.persist ? "persist" : "",
+                pool->flags.u.shared ? "shared" : "",
+                pool->flags.u.pagebits,
+                pool->flags.u.version,
+                pool->n_pages);
 
         if ( pool->flags.raw != -1 )
         {
@@ -420,7 +431,10 @@ int xc_tmem_restore(xc_interface *xch, int dom, int io_fd)
         return -1;
 
     if ( xc_tmem_control(xch,0,XEN_SYSCTL_TMEM_OP_RESTORE_BEGIN,dom,0,0,NULL) < 0 )
-        return -1;
+    {
+        if (errno != EEXIST) /* HACK */
+            return -1;
+    }
 
     if ( xc_tmem_control(xch, 0 /* pool_id */,
                          XEN_SYSCTL_TMEM_OP_SET_CLIENT_INFO,
@@ -431,18 +445,27 @@ int xc_tmem_restore(xc_interface *xch, int dom, int io_fd)
     if ( read_exact(io_fd, &minusone, sizeof(minusone)) )
         return -1;
 
+    IPRINTF("%s: %d, %d pools \n", __func__, dom, info.nr_pools);
     for ( i = 0; i < info.nr_pools; i++ )
     {
         int bufsize = 0, pagesize;
         int j;
         struct tmem_pool_info pool;
 
+
         if ( read_exact(io_fd, &pool, sizeof(pool)) )
             return -1;
 
+        IPRINTF("%s: %d/%d id=%d raw=%x %s%s %d %d, npages=%#lx\n", __func__, i, info.nr_pools, pool.id,
+                pool.flags.raw,
+                pool.flags.u.persist ? "persist" : "",
+                pool.flags.u.shared ? "shared" : "",
+                pool.flags.u.pagebits,
+                pool.flags.u.version,
+                pool.n_pages);
         if ( xc_tmem_restore_new_pool(xch, dom, pool.id, pool.flags.raw,
                                       pool.uuid[0], pool.uuid[1]) < 0 )
-            return -1;
+            continue; /* HACK */
 
         if ( pool.n_pages <= 0 )
             continue;
