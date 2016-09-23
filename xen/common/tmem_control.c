@@ -270,6 +270,12 @@ static int __tmemc_set_var(struct client *client,
     if ( copy_from_guest(&info, buf, 1) )
         return -EFAULT;
 
+    if ( info.version != TMEM_SPEC_VERSION )
+        return -ENOSPC;
+
+    if ( info.maxpools > MAX_POOLS_PER_DOMAIN )
+        return -ERANGE;
+
     if ( info.weight != client->info.weight )
     {
         old_weight = client->info.weight;

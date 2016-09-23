@@ -383,7 +383,6 @@ int xc_tmem_restore(xc_interface *xch, int dom, int io_fd)
 
     if ( read_exact(io_fd, &info, sizeof(info)) )
         return -1;
-    /* FIXME check here to ensure no version mismatch or maxpools mismatch */
     if ( xc_tmem_control(xch,0,XEN_SYSCTL_TMEM_OP_RESTORE_BEGIN,dom,0,0,NULL) < 0 )
         return -1;
 
