@@ -787,8 +787,9 @@ struct tmem_handle {
  * during migration.
  */
 struct tmem_client {
-    uint32_t version;
-    uint32_t maxpools;
+    uint32_t version;   /* If mismatched we will get XEN_ENOSPC. */
+    uint32_t maxpools;  /* If greater than what hypervisor supports, will get
+                           XEN_ERANGE. */
     union {             /* See TMEM_CLIENT_[COMPRESS,FROZEN] */
         uint32_t raw;
         struct {
