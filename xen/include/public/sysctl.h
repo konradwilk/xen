@@ -760,9 +760,7 @@ DEFINE_XEN_GUEST_HANDLE(xen_sysctl_psr_cat_op_t);
 #define XEN_SYSCTL_TMEM_OP_SAVE_BEGIN             10
 #define XEN_SYSCTL_TMEM_OP_GET_CLIENT_INFO        11
 #define XEN_SYSCTL_TMEM_OP_SET_CLIENT_INFO        12
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_POOL_FLAGS    16
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_POOL_NPAGES   17
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_POOL_UUID     18
+#define XEN_SYSCTL_TMEM_OP_GET_POOLS              16
 #define XEN_SYSCTL_TMEM_OP_SAVE_GET_NEXT_PAGE     19
 #define XEN_SYSCTL_TMEM_OP_SAVE_GET_NEXT_INV      20
 #define XEN_SYSCTL_TMEM_OP_SAVE_END               21
@@ -790,6 +788,7 @@ struct tmem_client {
     uint32_t version;   /* If mismatched we will get XEN_ENOSPC. */
     uint32_t maxpools;  /* If greater than what hypervisor supports, will get
                            XEN_ERANGE. */
+    uint32_t nr_pools;  /* Current amount of pools. Ignored on SET*/
     union {             /* See TMEM_CLIENT_[COMPRESS,FROZEN] */
         uint32_t raw;
         struct {
@@ -802,6 +801,31 @@ struct tmem_client {
 };
 typedef struct tmem_client xen_sysctl_tmem_client_t;
 DEFINE_XEN_GUEST_HANDLE(xen_sysctl_tmem_client_t);
+
+/*
+ * XEN_SYSCTL_TMEM_OP_GET_POOLS uses the 'pool' array in
+ * xen_sysctl_tmem_op with this structure. The hypercall will
+ * return the number of entries in 'pool' or a negative value
+ * if an error was encountered.
+ */
+struct tmem_pool_info {
+    union {
+        uint32_t raw;
+        struct {
+            uint32_t persist:1,    /* See TMEM_POOL_PERSIST. */
+                     shared:1,     /* See TMEM_POOL_SHARED. */
+                     rsv:2,
+                     pagebits:8,   /* TMEM_POOL_PAGESIZE_[SHIFT,MASK]. */
+                     rsv2:12,
+                     version:8;    /* TMEM_POOL_VERSION_[SHIFT,MASK]. */
+        } u;
+    } flags;
+    uint32_t id;                  /* Less than tmem_client.maxpools. */
+    uint64_t n_pages;
+    uint64_t uuid[2];
+};
+typedef struct tmem_pool_info xen_sysctl_tmem_pool_info_t;
+DEFINE_XEN_GUEST_HANDLE(xen_sysctl_tmem_pool_info_t);
 
 struct xen_sysctl_tmem_op {
     uint32_t cmd;       /* IN: XEN_SYSCTL_TMEM_OP_* . */
@@ -817,6 +841,9 @@ struct xen_sysctl_tmem_op {
         XEN_GUEST_HANDLE_64(char) buf; /* IN/OUT: Buffer to save/restore */
         XEN_GUEST_HANDLE_64(xen_sysctl_tmem_client_t) client; /* IN/OUT for */
                         /*  XEN_SYSCTL_TMEM_OP_[GET,SAVE]_CLIENT. */
+        XEN_GUEST_HANDLE_64(xen_sysctl_tmem_pool_info_t) pool; /* OUT for */
+                        /* XEN_SYSCTL_TMEM_OP_GET_POOLS. Must have 'len' */
+                        /* of them. */
     } u;
 };
 typedef struct xen_sysctl_tmem_op xen_sysctl_tmem_op_t;
