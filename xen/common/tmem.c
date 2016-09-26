@@ -1084,7 +1084,8 @@ static struct client *client_create(domid_t cli_id)
     rcu_unlock_domain(d);
 
     client->cli_id = cli_id;
-    client->compress = tmem_compression_enabled();
+    if ( !tmem_dedup_enabled() )
+        client->compress = tmem_compression_enabled();
     client->shared_auth_required = tmem_shared_auth();
     for ( i = 0; i < MAX_GLOBAL_SHARED_POOLS; i++)
         client->shared_auth_uuid[i][0] =
@@ -2378,13 +2379,18 @@ static int __init init_tmem(void)
 
     if ( tmem_init() )
     {
-        printk("tmem: initialized comp=%d dedup=%d tze=%d\n",
-            tmem_compression_enabled(), tmem_dedup_enabled(), tmem_tze_enabled());
-        if ( tmem_dedup_enabled()&&tmem_compression_enabled()&&tmem_tze_enabled() )
+        if ( tmem_dedup_enabled() && tmem_compression_enabled() )
+        {
+            tmem_compression_disable();
+            printk("tmem: dedup and compression not compatible, disabling compression\n");
+        }
+        if ( tmem_compression_enabled() && tmem_tze_enabled() )
         {
             tmem_tze_disable();
             printk("tmem: tze and compression not compatible, disabling tze\n");
         }
+        printk("tmem: initialized comp=%d dedup=%d tze=%d\n",
+            tmem_compression_enabled(), tmem_dedup_enabled(), tmem_tze_enabled());
         tmem_initialized = 1;
     }
     else

@@ -41,6 +41,11 @@ static inline bool_t tmem_compression_enabled(void)
     return opt_tmem_compress;
 }
 
+static inline void tmem_compression_disable(void)
+{
+    opt_tmem_compress = 0;
+}
+
 extern bool_t opt_tmem_dedup;
 static inline bool_t tmem_dedup_enabled(void)
 {
