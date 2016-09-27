@@ -288,6 +288,7 @@ static int __tmemc_set_var(struct client *client,
         atomic_add(client->info.weight,&tmem_global.client_weight_total);
     }
 
+#ifdef CONFIG_TMEM_DEDUP
     if ( info.flags.u.compress && tmem_dedup_enabled() )
     {
         tmem_client_warn("tmem: compression %s for all %ss, cannot be changed when tmem_dedup is enabled\n",
@@ -295,6 +296,7 @@ static int __tmemc_set_var(struct client *client,
                          tmem_client_str);
         return -1;
     }
+#endif
 
     if ( info.flags.u.compress != client->info.flags.u.compress )
     {
