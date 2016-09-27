@@ -25,8 +25,10 @@ bool_t __read_mostly opt_tmem_dedup = 0;
 boolean_param("tmem_dedup", opt_tmem_dedup);
 #endif
 
+#ifdef CONFIG_TMEM_TZE
 bool_t __read_mostly opt_tmem_tze = 0;
 boolean_param("tmem_tze", opt_tmem_tze);
+#endif
 
 bool_t __read_mostly opt_tmem_shared_auth = 0;
 boolean_param("tmem_shared_auth", opt_tmem_shared_auth);
@@ -218,6 +220,7 @@ int tmem_decompress_to_client(xen_pfn_t cmfn, void *tmem_va,
     return 1;
 }
 
+#ifdef CONFIG_TMEM_TZE
 int tmem_copy_tze_to_client(xen_pfn_t cmfn, void *tmem_va,
                                     pagesize_t len)
 {
@@ -239,6 +242,7 @@ int tmem_copy_tze_to_client(xen_pfn_t cmfn, void *tmem_va,
     smp_mb();
     return 1;
 }
+#endif
 
 /******************  XEN-SPECIFIC HOST INITIALIZATION ********************/
 static int dstmem_order, workmem_order;
