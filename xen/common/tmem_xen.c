@@ -20,8 +20,10 @@ boolean_param("tmem", opt_tmem);
 bool_t __read_mostly opt_tmem_compress = 0;
 boolean_param("tmem_compress", opt_tmem_compress);
 
+#ifdef CONFIG_TMEM_DEDUP
 bool_t __read_mostly opt_tmem_dedup = 0;
 boolean_param("tmem_dedup", opt_tmem_dedup);
+#endif
 
 bool_t __read_mostly opt_tmem_tze = 0;
 boolean_param("tmem_tze", opt_tmem_tze);
