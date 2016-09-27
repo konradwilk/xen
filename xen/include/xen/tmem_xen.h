@@ -49,6 +49,7 @@ static inline bool_t tmem_dedup_enabled(void)
 }
 #endif
 
+#ifdef CONFIG_TMEM_TZE
 extern bool_t opt_tmem_tze;
 static inline bool_t tmem_tze_enabled(void)
 {
@@ -59,6 +60,7 @@ static inline void tmem_tze_disable(void)
 {
     opt_tmem_tze = 0;
 }
+#endif
 
 extern bool_t opt_tmem_shared_auth;
 static inline bool_t tmem_shared_auth(void)
@@ -340,7 +342,9 @@ int tmem_compress_from_client(xen_pfn_t, void **, size_t *,
 
 int tmem_copy_from_client(struct page_info *, xen_pfn_t, tmem_cli_va_param_t);
 int tmem_copy_to_client(xen_pfn_t, struct page_info *, tmem_cli_va_param_t);
+#ifdef CONFIG_TMEM_TZE
 extern int tmem_copy_tze_to_client(xen_pfn_t cmfn, void *tmem_va, pagesize_t len);
+#endif
 
 #define tmem_client_err(fmt, args...)  printk(XENLOG_G_ERR fmt, ##args)
 #define tmem_client_warn(fmt, args...) printk(XENLOG_G_WARNING fmt, ##args)
