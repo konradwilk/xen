@@ -756,14 +756,10 @@ DEFINE_XEN_GUEST_HANDLE(xen_sysctl_psr_cat_op_t);
 #define XEN_SYSCTL_TMEM_OP_FLUSH                  2
 #define XEN_SYSCTL_TMEM_OP_DESTROY                3
 #define XEN_SYSCTL_TMEM_OP_LIST                   4
-#define XEN_SYSCTL_TMEM_OP_SET_WEIGHT             5
-#define XEN_SYSCTL_TMEM_OP_SET_COMPRESS           7
 #define XEN_SYSCTL_TMEM_OP_QUERY_FREEABLE_MB      8
 #define XEN_SYSCTL_TMEM_OP_SAVE_BEGIN             10
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_VERSION       11
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_MAXPOOLS      12
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_CLIENT_WEIGHT 13
-#define XEN_SYSCTL_TMEM_OP_SAVE_GET_CLIENT_FLAGS  15
+#define XEN_SYSCTL_TMEM_OP_GET_CLIENT_INFO        11
+#define XEN_SYSCTL_TMEM_OP_SET_CLIENT_INFO        12
 #define XEN_SYSCTL_TMEM_OP_SAVE_GET_POOL_FLAGS    16
 #define XEN_SYSCTL_TMEM_OP_SAVE_GET_POOL_NPAGES   17
 #define XEN_SYSCTL_TMEM_OP_SAVE_GET_POOL_UUID     18
@@ -785,6 +781,11 @@ struct tmem_handle {
     xen_tmem_oid_t oid;
 };
 
+/*
+ * XEN_SYSCTL_TMEM_OP_[GET,SAVE]_CLIENT overrides the 'buf' in
+ * xen_sysctl_tmem_op with this structure - and contain data used
+ * during migration.
+ */
 struct tmem_client {
     uint32_t version;
     uint32_t maxpools;
@@ -798,6 +799,8 @@ struct tmem_client {
     } flags;
     uint32_t weight;
 };
+typedef struct tmem_client xen_sysctl_tmem_client_t;
+DEFINE_XEN_GUEST_HANDLE(xen_sysctl_tmem_client_t);
 
 struct xen_sysctl_tmem_op {
     uint32_t cmd;       /* IN: XEN_SYSCTL_TMEM_OP_* . */
@@ -809,7 +812,8 @@ struct xen_sysctl_tmem_op {
     uint32_t arg2;      /* IN: If not applicable to command use 0. */
     uint32_t pad;       /* Padding so structure is the same under 32 and 64. */
     xen_tmem_oid_t oid; /* IN: If not applicable to command use 0s. */
-    XEN_GUEST_HANDLE_64(char) buf; /* IN/OUT: Buffer to save and restore ops. */
+    XEN_GUEST_HANDLE_64(char) buf; /* IN/OUT: Buffer to save/restore,
+                                      and set/get ops. */
 };
 typedef struct xen_sysctl_tmem_op xen_sysctl_tmem_op_t;
 DEFINE_XEN_GUEST_HANDLE(xen_sysctl_tmem_op_t);
