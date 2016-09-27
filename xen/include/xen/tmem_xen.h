@@ -41,11 +41,13 @@ static inline bool_t tmem_compression_enabled(void)
     return opt_tmem_compress;
 }
 
+#ifdef CONFIG_TMEM_DEDUP
 extern bool_t opt_tmem_dedup;
 static inline bool_t tmem_dedup_enabled(void)
 {
     return opt_tmem_dedup;
 }
+#endif
 
 extern bool_t opt_tmem_tze;
 static inline bool_t tmem_tze_enabled(void)
@@ -192,6 +194,7 @@ static inline struct client *tmem_client_from_cli_id(domid_t cli_id)
     return c;
 }
 
+#ifdef CONFIG_TMEM_DEDUP
 static inline uint8_t tmem_get_first_byte(struct page_info *pfp)
 {
     const uint8_t *p = __map_domain_page(pfp);
@@ -288,6 +291,7 @@ static inline void tmem_tze_copy_from_pfp(void *tva, struct page_info *pfp, page
 
     unmap_domain_page(p);
 }
+#endif
 
 /* these typedefs are in the public/tmem.h interface
 typedef XEN_GUEST_HANDLE(void) cli_mfn_t;

@@ -71,10 +71,14 @@ struct tmem_page_descriptor {
     pagesize_t size; /* 0 == PAGE_SIZE (pfp), -1 == data invalid,
                     else compressed data (cdata). */
     uint32_t index;
+#ifdef CONFIG_TMEM_DEDUP
     /* Must hold pcd_tree_rwlocks[firstbyte] to use pcd pointer/siblings. */
     uint16_t firstbyte; /* NON_SHAREABLE->pfp  otherwise->pcd. */
+#endif
     bool_t eviction_attempted;  /* CHANGE TO lifetimes? (settable). */
+#ifdef CONFIG_TMEM_DEDUP
     struct list_head pcd_siblings;
+#endif
     union {
         struct page_info *pfp;  /* Page frame pointer. */
         char *cdata; /* Compressed data. */
@@ -94,15 +98,20 @@ struct tmem_page_content_descriptor {
         char *cdata; /* If compression_enabled. */
         char *tze; /* If !compression_enabled, trailing zeroes eliminated. */
     };
+#ifdef CONFIG_TMEM_DEDUP
     struct list_head pgp_list;
     struct rb_node pcd_rb_tree_node;
     uint32_t pgp_ref_count;
+#endif
     pagesize_t size; /* If compression_enabled -> 0<size<PAGE_SIZE (*cdata)
                      * else if tze, 0<=size<PAGE_SIZE, rounded up to mult of 8
                      * else PAGE_SIZE -> *pfp. */
 };
+
+#ifdef CONFIG_TMEM_DEDUP
 struct rb_root pcd_tree_roots[256]; /* Choose based on first byte of page. */
 rwlock_t pcd_tree_rwlocks[256]; /* Poor man's concurrency for now. */
+#endif
 
 static int tmem_initialized = 0;
 
@@ -262,6 +271,7 @@ static void tmem_persistent_pool_page_put(void *page_va)
  */
 #define NOT_SHAREABLE ((uint16_t)-1UL)
 
+#ifdef CONFIG_TMEM_DEDUP
 static int pcd_copy_to_client(xen_pfn_t cmfn, struct tmem_page_descriptor *pgp)
 {
     uint8_t firstbyte = pgp->firstbyte;
@@ -485,6 +495,7 @@ unlock:
     write_unlock(&pcd_tree_rwlocks[firstbyte]);
     return ret;
 }
+#endif
 
 /************ PAGE DESCRIPTOR MANIPULATION ROUTINES *******************/
 
@@ -503,12 +514,14 @@ static struct tmem_page_descriptor *pgp_alloc(struct tmem_object_root *obj)
     INIT_LIST_HEAD(&pgp->global_eph_pages);
     INIT_LIST_HEAD(&pgp->us.client_eph_pages);
     pgp->pfp = NULL;
+#ifdef CONFIG_TMEM_DEDUP
     if ( tmem_dedup_enabled() )
     {
         pgp->firstbyte = NOT_SHAREABLE;
         pgp->eviction_attempted = 0;
         INIT_LIST_HEAD(&pgp->pcd_siblings);
     }
+#endif
     pgp->size = -1;
     pgp->index = -1;
     pgp->timestamp = get_cycles();
@@ -533,9 +546,12 @@ static void pgp_free_data(struct tmem_page_descriptor *pgp, struct tmem_pool *po
 
     if ( pgp->pfp == NULL )
         return;
+#ifdef CONFIG_TMEM_DEDUP
     if ( tmem_dedup_enabled() && pgp->firstbyte != NOT_SHAREABLE )
         pcd_disassociate(pgp,pool,0); /* pgp->size lost. */
-    else if ( pgp_size )
+    else
+#endif
+    if ( pgp_size )
         tmem_free(pgp->cdata, pool);
     else
         tmem_free_page(pgp->us.obj->pool,pgp->pfp);
@@ -1085,6 +1101,8 @@ static struct client *client_create(domid_t cli_id)
 
     client->cli_id = cli_id;
     client->compress = tmem_compression_enabled();
+#ifdef CONFIG_TMEM_DEDUP
+#endif
     client->shared_auth_required = tmem_shared_auth();
     for ( i = 0; i < MAX_GLOBAL_SHARED_POOLS; i++)
         client->shared_auth_uuid[i][0] =
@@ -1141,13 +1159,16 @@ static bool_t tmem_try_to_evict_pgp(struct tmem_page_descriptor *pgp, bool_t *ho
 {
     struct tmem_object_root *obj = pgp->us.obj;
     struct tmem_pool *pool = obj->pool;
+#ifdef CONFIG_TMEM_DEDUP
     struct client *client = pool->client;
     uint16_t firstbyte = pgp->firstbyte;
+#endif
 
     if ( pool->is_dying )
         return 0;
     if ( spin_trylock(&obj->obj_spinlock) )
     {
+#ifdef CONFIG_TMEM_DEDUP
         if ( tmem_dedup_enabled() )
         {
             firstbyte = pgp->firstbyte;
@@ -1166,6 +1187,7 @@ static bool_t tmem_try_to_evict_pgp(struct tmem_page_descriptor *pgp, bool_t *ho
                 goto pcd_unlock;
             }
         }
+#endif
         if ( obj->pgp_count > 1 )
             return 1;
         if ( write_trylock(&pool->pool_rwlock) )
@@ -1173,10 +1195,12 @@ static bool_t tmem_try_to_evict_pgp(struct tmem_page_descriptor *pgp, bool_t *ho
             *hold_pool_rwlock = 1;
             return 1;
         }
+#ifdef CONFIG_TMEM_DEDUP
 pcd_unlock:
         if ( tmem_dedup_enabled() )
             write_unlock(&pcd_tree_rwlocks[firstbyte]);
 obj_unlock:
+#endif
         spin_unlock(&obj->obj_spinlock);
     }
     return 0;
@@ -1232,11 +1256,13 @@ found:
     ASSERT_SPINLOCK(&obj->obj_spinlock);
     pgp_del = pgp_delete_from_obj(obj, pgp->index);
     ASSERT(pgp_del == pgp);
+#ifdef CONFIG_TMEM_DEDUP
     if ( tmem_dedup_enabled() && pgp->firstbyte != NOT_SHAREABLE )
     {
         ASSERT(pgp->pcd->pgp_ref_count == 1 || pgp->eviction_attempted);
         pcd_disassociate(pgp,pool,1);
     }
+#endif
 
     /* pgp already delist, so call pgp_free directly. */
     pgp_free(pgp);
@@ -1303,9 +1329,11 @@ static int do_tmem_put_compress(struct tmem_page_descriptor *pgp, xen_pfn_t cmfn
     else if ( (size == 0) || (size >= tmem_mempool_maxalloc) ) {
         ret = 0;
         goto out;
+#ifdef CONFIG_TMEM_DEDUP
     } else if ( tmem_dedup_enabled() && !is_persistent(pgp->us.obj->pool) ) {
         if ( (ret = pcd_associate(pgp,dst,size)) == -ENOMEM )
             goto out;
+#endif
     } else if ( (p = tmem_malloc(size,pgp->us.obj->pool)) == NULL ) {
         ret = -ENOMEM;
         goto out;
@@ -1365,11 +1393,13 @@ copy_uncompressed:
     ret = tmem_copy_from_client(pgp->pfp, cmfn, tmem_cli_buf_null);
     if ( ret < 0 )
         goto bad_copy;
+#ifdef CONFIG_PAGE_DEDUP
     if ( tmem_dedup_enabled() && !is_persistent(pool) )
     {
         if ( pcd_associate(pgp,NULL,0) == -ENOMEM )
             goto failed_dup;
     }
+#endif
 
 done:
     /* Successfully replaced data, clean up and return success. */
@@ -1506,6 +1536,7 @@ copy_uncompressed:
     if ( ret < 0 )
         goto bad_copy;
 
+#ifdef CONFIG_TMEM_DEDUP
     if ( tmem_dedup_enabled() && !is_persistent(pool) )
     {
         if ( pcd_associate(pgp, NULL, 0) == -ENOMEM )
@@ -1514,6 +1545,7 @@ copy_uncompressed:
             goto del_pgp_from_obj;
         }
     }
+#endif
 
 insert_page:
     if ( !is_persistent(pool) )
@@ -1601,10 +1633,13 @@ static int do_tmem_get(struct tmem_pool *pool,
         return 0;
     }
     ASSERT(pgp->size != -1);
+#ifdef CONFIG_TMEM_DEDUP
     if ( tmem_dedup_enabled() && !is_persistent(pool) &&
               pgp->firstbyte != NOT_SHAREABLE )
         rc = pcd_copy_to_client(cmfn, pgp);
-    else if ( pgp->size != 0 )
+    else
+#endif
+    if ( pgp->size != 0 )
     {
         rc = tmem_decompress_to_client(cmfn, pgp->cdata, pgp->size, clibuf);
     }
@@ -2362,29 +2397,41 @@ unsigned long tmem_freeable_pages(void)
 /* Called at hypervisor startup. */
 static int __init init_tmem(void)
 {
-    int i;
     if ( !tmem_enabled() )
         return 0;
 
+#ifdef CONFIG_TMEM_DEDUP
     if ( tmem_dedup_enabled() )
+    {
+        unsigned int i;
+
         for (i = 0; i < 256; i++ )
         {
             pcd_tree_roots[i] = RB_ROOT;
             rwlock_init(&pcd_tree_rwlocks[i]);
         }
-
+    }
+#endif
     if ( !tmem_mempool_init() )
         return 0;
 
     if ( tmem_init() )
     {
         printk("tmem: initialized comp=%d dedup=%d tze=%d\n",
-            tmem_compression_enabled(), tmem_dedup_enabled(), tmem_tze_enabled());
+               tmem_compression_enabled(),
+#ifdef CONFIG_TMEM_DEDUP
+               tmem_dedup_enabled(),
+#else
+               0,
+#endif
+               tmem_tze_enabled());
+#ifdef CONFIG_TMEM_DEDUP
         if ( tmem_dedup_enabled()&&tmem_compression_enabled()&&tmem_tze_enabled() )
         {
             tmem_tze_disable();
             printk("tmem: tze and compression not compatible, disabling tze\n");
         }
+#endif
         tmem_initialized = 1;
     }
     else
