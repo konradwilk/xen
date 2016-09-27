@@ -96,7 +96,9 @@ struct tmem_page_content_descriptor {
     union {
         struct page_info *pfp;  /* Page frame pointer. */
         char *cdata; /* If compression_enabled. */
+#ifdef CONFIG_TMEM_TZE
         char *tze; /* If !compression_enabled, trailing zeroes eliminated. */
+#endif
     };
 #ifdef CONFIG_TMEM_DEDUP
     struct list_head pgp_list;
@@ -2431,11 +2433,13 @@ static int __init init_tmem(void)
             printk("tmem: dedup and compression not compatible, disabling compression\n");
         }
 #endif
+#ifdef CONFIG_TMEM_TZE
         if ( tmem_compression_enabled() && tmem_tze_enabled() )
         {
             tmem_tze_disable();
             printk("tmem: tze and compression not compatible, disabling tze\n");
         }
+#endif
         printk("tmem: initialized comp=%d dedup=%d tze=%d\n",
             tmem_compression_enabled(),
 #ifdef CONFIG_TMEM_DEDUP
@@ -2443,7 +2447,12 @@ static int __init init_tmem(void)
 #else
             0,
 #endif
-            tmem_tze_enabled());
+#ifdef CONFIG_TMEM_TZE
+            tmem_tze_enabled()
+#else
+            0
+#endif
+            );
         tmem_initialized = 1;
     }
     else
