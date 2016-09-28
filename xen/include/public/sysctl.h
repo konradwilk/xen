@@ -782,8 +782,8 @@ struct tmem_handle {
 };
 
 /*
- * XEN_SYSCTL_TMEM_OP_[GET,SAVE]_CLIENT overrides the 'buf' in
- * xen_sysctl_tmem_op with this structure - and contain data used
+ * XEN_SYSCTL_TMEM_OP_[GET,SAVE]_CLIENT uses the 'client' in
+ * xen_sysctl_tmem_op with this structure - which is mostly used
  * during migration.
  */
 struct tmem_client {
@@ -812,8 +812,11 @@ struct xen_sysctl_tmem_op {
     uint32_t arg2;      /* IN: If not applicable to command use 0. */
     uint32_t pad;       /* Padding so structure is the same under 32 and 64. */
     xen_tmem_oid_t oid; /* IN: If not applicable to command use 0s. */
-    XEN_GUEST_HANDLE_64(char) buf; /* IN/OUT: Buffer to save/restore,
-                                      and set/get ops. */
+    union {
+        XEN_GUEST_HANDLE_64(char) buf; /* IN/OUT: Buffer to save/restore */
+        XEN_GUEST_HANDLE_64(xen_sysctl_tmem_client_t) client; /* IN/OUT for */
+                        /*  XEN_SYSCTL_TMEM_OP_[GET,SAVE]_CLIENT. */
+    } u;
 };
 typedef struct xen_sysctl_tmem_op xen_sysctl_tmem_op_t;
 DEFINE_XEN_GUEST_HANDLE(xen_sysctl_tmem_op_t);
