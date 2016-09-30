@@ -878,6 +878,7 @@ static void client_flush(struct client *client)
             continue;
         pool_flush(pool, client->cli_id);
         client->pools[i] = NULL;
+        client->info.nr_pools--;
     }
     client_free(client);
 }
@@ -1428,6 +1429,7 @@ static int do_tmem_destroy_pool(uint32_t pool_id)
         return 0;
     client->pools[pool_id] = NULL;
     pool_flush(pool, client->cli_id);
+    client->info.nr_pools--;
     return 1;
 }
 
@@ -1590,6 +1592,7 @@ static int do_tmem_new_pool(domid_t this_cli_id,
 
 out:
     tmem_client_info("pool_id=%d\n", d_poolid);
+    client->info.nr_pools++;
     return d_poolid;
 
 fail:
