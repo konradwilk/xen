@@ -252,14 +252,27 @@ int arch_livepatch_perform_rela(struct livepatch_elf *elf,
         int ovf = 0;
         uint64_t val;
 
+        if ( symndx == STN_UNDEF )
+        {
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: Encountered STN_UNDEF\n",
+                    elf->name);
+            return -EOPNOTSUPP;
+        }
+
         if ( symndx > elf->nsym )
         {
             dprintk(XENLOG_ERR, LIVEPATCH "%s: Relative relocation wants symbol@%u which is past end!\n",
                     elf->name, symndx);
             return -EINVAL;
         }
-
-        val = elf->sym[symndx].sym->st_value +  r->r_addend; /* S+A */
+        else if ( !elf->sym[symndx].sym )
+        {
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: No relative symbol@%u\n",
+                    elf->name, symndx);
+            return -EINVAL;
+        }
+        else
+            val = elf->sym[symndx].sym->st_value + r->r_addend; /* S+A */
 
         /* ARM64 operations at minimum are always 32-bit. */
         if ( r->r_offset >= base->sec->sh_size ||
