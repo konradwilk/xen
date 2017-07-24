@@ -28,6 +28,7 @@ void __init apply_alternatives_all(void);
 int apply_alternatives(const struct alt_instr *start, const struct alt_instr *end);
 
 #define ALTINSTR_ENTRY(feature)						      \
+	" .p2align 2\n"							      \
 	" .word 661b - .\n"				/* label           */ \
 	" .word 663f - .\n"				/* new instruction */ \
 	" .hword " __stringify(feature) "\n"		/* feature bit     */ \
@@ -57,6 +58,7 @@ int apply_alternatives(const struct alt_instr *start, const struct alt_instr *en
 	ALTINSTR_ENTRY(feature)						\
 	".popsection\n"							\
 	".pushsection .altinstr_replacement, \"a\"\n"			\
+	".p2align 2\n"							\
 	"663:\n\t"							\
 	newinstr "\n"							\
 	"664:\n\t"							\
@@ -73,6 +75,7 @@ int apply_alternatives(const struct alt_instr *start, const struct alt_instr *en
 #include <asm/asm_defns.h>
 
 .macro altinstruction_entry orig_offset alt_offset feature orig_len alt_len
+	.p2align 2
 	.word \orig_offset - .
 	.word \alt_offset - .
 	.hword \feature
@@ -103,6 +106,7 @@ int apply_alternatives(const struct alt_instr *start, const struct alt_instr *en
 .macro alternative_if_not cap, enable = 1
 	.if \enable
 	.pushsection .altinstructions, "a"
+	.p2align 2
 	altinstruction_entry 661f, 663f, \cap, 662f-661f, 664f-663f
 	.popsection
 661:

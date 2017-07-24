@@ -5,6 +5,7 @@
 
 #ifdef __ASSEMBLY__
 .macro altinstruction_entry orig alt feature orig_len alt_len
+        .p2align 2
         .long \orig - .
         .long \alt - .
         .word \feature
@@ -42,6 +43,7 @@ extern void alternative_instructions(void);
 #define alt_rlen(number) e_replacement(number)"f-"b_replacement(number)"f"
 
 #define ALTINSTR_ENTRY(feature, number)                                       \
+        " .p2align 2\n"                                                       \
         " .long 661b - .\n"                             /* label           */ \
         " .long " b_replacement(number)"f - .\n"        /* new instruction */ \
         " .word " __stringify(feature) "\n"             /* feature bit     */ \

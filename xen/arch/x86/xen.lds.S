@@ -202,7 +202,7 @@ SECTIONS
         * "Alternative instructions for different CPU types or capabilities"
         * Think locking instructions on spinlocks.
         */
-       . = ALIGN(8);
+       . = ALIGN(4);
         __alt_instructions = .;
         *(.altinstructions)
         __alt_instructions_end = .;
