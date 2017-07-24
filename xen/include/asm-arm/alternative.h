@@ -63,10 +63,12 @@ int apply_alternatives(const struct alt_instr *start, const struct alt_instr *en
 	oldinstr "\n"							\
 	"662:\n"							\
 	".pushsection .altinstructions,\"a\"\n"				\
+	".p2align 2\n"							\
 	ALTINSTR_ENTRY(feature,cb)					\
 	".popsection\n"							\
 	" .if " __stringify(cb) " == 0\n"				\
 	".pushsection .altinstr_replacement, \"a\"\n"			\
+	".p2align 2\n"							\
 	"663:\n\t"							\
 	newinstr "\n"							\
 	"664:\n\t"							\
@@ -100,6 +102,7 @@ int apply_alternatives(const struct alt_instr *start, const struct alt_instr *en
 	.if \enable
 661:	\insn1
 662:	.pushsection .altinstructions, "a"
+	.p2align 2
 	altinstruction_entry 661b, 663f, \cap, 662b-661b, 664f-663f
 	.popsection
 	.pushsection .altinstr_replacement, "ax"
@@ -119,6 +122,7 @@ int apply_alternatives(const struct alt_instr *start, const struct alt_instr *en
 .macro alternative_if_not cap, enable = 1
 	.if \enable
 	.pushsection .altinstructions, "a"
+	.p2align 2
 	altinstruction_entry 661f, 663f, \cap, 662f-661f, 664f-663f
 	.popsection
 661:
