@@ -12,6 +12,9 @@
 
 #include <public/sysctl.h>
 
+#include "livepatch_depends.h"
+#include "livepatch_xen_depends.h"
+
 static unsigned int apply_cnt;
 static unsigned int revert_cnt;
 

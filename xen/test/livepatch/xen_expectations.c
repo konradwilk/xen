@@ -12,6 +12,9 @@
 
 #include <public/sysctl.h>
 
+#include "livepatch_depends.h"
+#include "livepatch_xen_depends.h"
+
 static const char livepatch_exceptions_str[] = "xen_extra_version";
 extern const char *xen_hello_world(void);
 

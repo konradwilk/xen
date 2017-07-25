@@ -8,6 +8,9 @@
 
 #include <public/sysctl.h>
 
+#include "livepatch_depends.h"
+#include "livepatch_xen_depends.h"
+
 /*
  * All of the .new_size and .old_addr are based on assumptions that the
  * code for 'xen_minor_version' is compiled in specific way. Before

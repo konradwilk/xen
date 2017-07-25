@@ -560,6 +560,8 @@ There are two kinds of build-id dependencies:
 
 See "Live patch interdependencies" for more information.
 
+On ARM32 this section must by four-byte aligned.
+
 ## Hypercalls
 
 We will employ the sub operations of the system management hypercall (sysctl).
