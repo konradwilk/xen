@@ -49,6 +49,7 @@ the name of the machine:
   - xgene-mcdivitt: printk with 820 on Xgene mcdivitt platform
   - xgene-storm: printk with 820 on Xgene storm platform
   - zynqmp: printk with Cadence UART for Xilinx ZynqMP SoCs
+  - hikey960: printk with pl011 with Hikey 960
 
 These settings are is hardcoded in xen/arch/arm/Rules.mk,
 see there when adding support for new machines.
