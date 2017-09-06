@@ -73,15 +73,9 @@ void arch_livepatch_apply(struct livepatch_func *func)
     memcpy(old_ptr, insn, len);
 }
 
-void arch_livepatch_revert(const struct livepatch_func *func)
+void arch_livepatch_revert(uint32_t *new_ptr, unsigned int len)
 {
-    uint32_t *new_ptr;
-    unsigned int len;
-
-    new_ptr = func->old_addr - (void *)_start + livepatch_vmap.text;
-
-    len = livepatch_insn_len(func);
-    memcpy(new_ptr, func->opaque, len);
+    /* Nothing to do. */
 }
 
 /* Serialise the CPU pipeline. */
