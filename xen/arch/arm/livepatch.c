@@ -13,6 +13,11 @@
 #include <asm/livepatch.h>
 #include <asm/mm.h>
 
+mfn_t arch_livepatch_lookup_mfn(unsigned long addr)
+{
+    return _mfn(virt_to_mfn(addr));
+}
+
 void arch_livepatch_revive(void)
 {
     /*
