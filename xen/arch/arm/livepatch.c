@@ -135,6 +135,15 @@ bool arch_livepatch_symbol_ok(const struct livepatch_elf *elf,
     return true;
 }
 
+bool arch_livepatch_verify_alignment(const struct livepatch_elf_sec *sec)
+{
+    if ( (sec->sec->sh_flags & SHF_EXECINSTR) &&
+         ((vaddr_t)sec->load_addr % sizeof(uint32_t)) )
+        return false;
+
+    return true;
+};
+
 int arch_livepatch_secure(const void *va, unsigned int pages, enum va_type type)
 {
     unsigned long start = (unsigned long)va;

@@ -233,7 +233,7 @@ int arch_livepatch_perform(struct livepatch_elf *elf,
         uint32_t val;
         void *dest;
         unsigned char type;
-        s32 addend;
+        s32 addend = 0;
 
         if ( use_rela )
         {
@@ -251,7 +251,6 @@ int arch_livepatch_perform(struct livepatch_elf *elf,
             symndx = ELF32_R_SYM(r->r_info);
             type = ELF32_R_TYPE(r->r_info);
             dest = base->load_addr + r->r_offset; /* P */
-            addend = get_addend(type, dest);
         }
 
         if ( symndx == STN_UNDEF )
@@ -272,6 +271,16 @@ int arch_livepatch_perform(struct livepatch_elf *elf,
                     elf->name, symndx);
             return -EINVAL;
         }
+        else if ( (type != R_ARM_ABS32 && type != R_ARM_REL32) /* Only check code. */ &&
+                  ((uint32_t)dest % sizeof(uint32_t)) )
+        {
+            dprintk(XENLOG_ERR, LIVEPATCH "%s: dest=%p (%s) is not aligned properly!\n",
+                    elf->name, dest, base->name);
+            return -EINVAL;
+        }
+
+        if ( !use_rela )
+            addend = get_addend(type, dest);
 
         val = elf->sym[symndx].sym->st_value; /* S */
 
