@@ -53,7 +53,8 @@ xen_hello_world.o: config.h livepatch_depends.h
 .PHONY: $(LIVEPATCH)
 $(LIVEPATCH): xen_hello_world_func.o xen_hello_world.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH) $^
-	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) \
+		   --set-section-flags .livepatch.funcs=alloc,readonly $@
 
 #
 # This target is only accessible if CONFIG_LIVEPATCH is defined, which
@@ -89,21 +90,24 @@ xen_bye_world.o: config.h hello_world_livepatch_depends.h
 .PHONY: $(LIVEPATCH_BYE)
 $(LIVEPATCH_BYE): xen_bye_world_func.o xen_bye_world.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_BYE) $^
-	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) \
+		   --set-section-flags .livepatch.funcs=alloc,readonly $@
 
 xen_replace_world.o: config.h livepatch_depends.h
 
 .PHONY: $(LIVEPATCH_REPLACE)
 $(LIVEPATCH_REPLACE): xen_replace_world_func.o xen_replace_world.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_REPLACE) $^
-	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) \
+		   --set-section-flags .livepatch.funcs=alloc,readonly $@
 
 xen_nop.o: config.h livepatch_depends.h
 
 .PHONY: $(LIVEPATCH_NOP)
 $(LIVEPATCH_NOP): xen_nop.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_NOP) $^
-	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --redefine-sym $(NOTE_SYMBOL)=$@_$(NOTE_SYMBOL) \
+		   --set-section-flags .livepatch.funcs=alloc,readonly $@
 
 .PHONY: livepatch
 livepatch: $(LIVEPATCH) $(LIVEPATCH_BYE) $(LIVEPATCH_REPLACE) $(LIVEPATCH_NOP)
