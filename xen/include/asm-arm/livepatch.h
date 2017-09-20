@@ -17,6 +17,19 @@
  */
 extern void *vmap_of_xen_text;
 
+/*
+ * The va of the livepatch .livepatch.funcs. Only used if said
+ * region is in RO VA and we need to modify it to RW during
+ * livepatching.
+ */
+struct livepatch_va
+{
+    unsigned long va;
+    unsigned int pages;
+};
+
+extern struct livepatch_va livepatch_stash;
+
 /* These ranges are only for unconditional branches. */
 #ifdef CONFIG_ARM_32
 /* ARM32: A4.3 IN ARM DDI 0406C.c -  we are using only ARM instructions in Xen.*/

@@ -56,6 +56,7 @@ struct payload {
     int32_t rc;                          /* 0 or -XEN_EXX. */
     bool reverted;                       /* Whether it was reverted. */
     bool safe_to_reapply;                /* Can apply safely after revert. */
+    bool funcs_ro;                       /* Are livepatch.funcs in .rodata section. */
     struct list_head list;               /* Linked to 'payload_list'. */
     const void *text_addr;               /* Virtual address of .text. */
     size_t text_size;                    /* .. and its size. */
@@ -537,6 +538,10 @@ static int prepare_payload(struct payload *payload,
 
     payload->funcs = sec->load_addr;
     payload->nfuncs = sec->sec->sh_size / sizeof(*payload->funcs);
+
+    if ( sec->load_addr >= payload->ro_addr &&
+         sec->load_addr < (payload->ro_addr + payload->ro_size) )
+        payload->funcs_ro = true;
 
     for ( i = 0; i < payload->nfuncs; i++ )
     {
@@ -1070,7 +1075,7 @@ static int apply_payload(struct payload *data)
     printk(XENLOG_INFO LIVEPATCH "%s: Applying %u functions\n",
             data->name, data->nfuncs);
 
-    rc = arch_livepatch_quiesce();
+    rc = arch_livepatch_quiesce(data->funcs, data->funcs_ro ? data->nfuncs : 0);
     if ( rc )
     {
         printk(XENLOG_ERR LIVEPATCH "%s: unable to quiesce!\n", data->name);
@@ -1111,7 +1116,7 @@ static int revert_payload(struct payload *data)
 
     printk(XENLOG_INFO LIVEPATCH "%s: Reverting\n", data->name);
 
-    rc = arch_livepatch_quiesce();
+    rc = arch_livepatch_quiesce(data->funcs, data->funcs_ro ? data->nfuncs : 0);
     if ( rc )
     {
         printk(XENLOG_ERR LIVEPATCH "%s: unable to quiesce!\n", data->name);

@@ -6,6 +6,7 @@
 #include <xen/lib.h>
 #include <xen/livepatch_elf.h>
 #include <xen/livepatch.h>
+#include <xen/pfn.h>
 #include <xen/vmap.h>
 
 #include <asm/cpufeature.h>
@@ -17,13 +18,15 @@
 #define virt_to_mfn(va) _mfn(__virt_to_mfn(va))
 
 void *vmap_of_xen_text;
+struct livepatch_va livepatch_stash;
 
-int arch_livepatch_quiesce(void)
+int arch_livepatch_quiesce(struct livepatch_func *func, size_t nfuncs)
 {
     mfn_t text_mfn;
     unsigned int text_order;
+    int rc = 0;
 
-    if ( vmap_of_xen_text )
+    if ( vmap_of_xen_text || livepatch_stash.va )
         return -EINVAL;
 
     text_mfn = virt_to_mfn(_start);
@@ -43,7 +46,29 @@ int arch_livepatch_quiesce(void)
         return -ENOMEM;
     }
 
-    return 0;
+    if ( nfuncs )
+    {
+        unsigned long va = (unsigned long)func;
+        unsigned int offs = va & (PAGE_SIZE - 1);
+        unsigned int pages = PFN_UP(offs + nfuncs * sizeof(*func));
+
+        va &= PAGE_MASK;
+
+        rc = modify_xen_mappings(va, va + (pages * PAGE_SIZE), PTE_NX);
+        if ( rc )
+        {
+            printk(XENLOG_ERR LIVEPATCH "Failed to modify 0x%lx to RW\n", va);
+            vunmap(vmap_of_xen_text);
+            vmap_of_xen_text = NULL;
+        }
+        else
+        {
+            livepatch_stash.va = va;
+            livepatch_stash.pages = pages;
+        }
+    }
+
+    return rc;
 }
 
 void arch_livepatch_revive(void)
@@ -58,6 +83,20 @@ void arch_livepatch_revive(void)
         vunmap(vmap_of_xen_text);
 
     vmap_of_xen_text = NULL;
+
+    if ( livepatch_stash.va )
+    {
+        unsigned long va = livepatch_stash.va;
+
+        int rc = modify_xen_mappings(va, va + (livepatch_stash.pages * PAGE_SIZE),
+                                     PTE_NX | PTE_RO);
+        if ( rc )
+            printk(XENLOG_ERR LIVEPATCH "Failed to modify %lx to RO!\n", va);
+
+        livepatch_stash.va = 0;
+        livepatch_stash.pages = 0;
+
+    }
 }
 
 int arch_livepatch_verify_func(const struct livepatch_func *func)
