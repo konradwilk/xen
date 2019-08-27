@@ -73,10 +73,17 @@ int arch_livepatch_verify_func(const struct livepatch_func *func)
     return 0;
 }
 
-void arch_livepatch_revert(const struct livepatch_func *func)
+void arch_livepatch_revert(struct livepatch_func *func)
 {
     uint32_t *new_ptr;
     unsigned int len;
+
+    /*
+     * If the apply action hasn't been executed
+     * on this function, do nothing...
+     */
+    if ( is_func_reverted(func) )
+        return;
 
     new_ptr = func->old_addr - (void *)_start + vmap_of_xen_text;
 
@@ -84,6 +91,7 @@ void arch_livepatch_revert(const struct livepatch_func *func)
     memcpy(new_ptr, func->opaque, len);
 
     clean_and_invalidate_dcache_va_range(new_ptr, len);
+    func->applied = LIVEPATCH_FUNC_NOT_APPLIED;
 }
 
 void arch_livepatch_post_action(void)

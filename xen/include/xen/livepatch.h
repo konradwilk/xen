@@ -109,6 +109,31 @@ static inline int livepatch_verify_distance(const struct livepatch_func *func)
 
     return 0;
 }
+
+static inline bool_t is_func_applied(const struct livepatch_func *func)
+{
+    if ( func->applied == LIVEPATCH_FUNC_APPLIED )
+    {
+        printk(XENLOG_WARNING LIVEPATCH "%s: %s has been already applied before\n",
+                __func__, func->name);
+        return true;
+    }
+
+    return false;
+}
+
+static inline bool_t is_func_reverted(const struct livepatch_func *func)
+{
+    if ( !func->old_addr || func->applied == LIVEPATCH_FUNC_NOT_APPLIED )
+    {
+        printk(XENLOG_WARNING LIVEPATCH "%s: %s has not been applied before\n",
+                __func__, func->name);
+        return true;
+    }
+
+    return false;
+}
+
 /*
  * These functions are called around the critical region patching live code,
  * for an architecture to take make appropratie global state adjustments.
@@ -117,7 +142,7 @@ int arch_livepatch_quiesce(void);
 void arch_livepatch_revive(void);
 
 void arch_livepatch_apply(struct livepatch_func *func);
-void arch_livepatch_revert(const struct livepatch_func *func);
+void arch_livepatch_revert(struct livepatch_func *func);
 void arch_livepatch_post_action(void);
 
 void arch_livepatch_mask(void);

@@ -56,10 +56,17 @@ void noinline arch_livepatch_apply(struct livepatch_func *func)
     uint8_t insn[sizeof(func->opaque)];
     unsigned int len;
 
+    /*
+     * If the apply action has been already executed
+     * on this function, do nothing...
+     */
+    if ( is_func_applied(func) )
+         return;
+
     old_ptr = func->old_addr;
     len = livepatch_insn_len(func);
     if ( !len )
-        return;
+        goto applied;
 
     memcpy(func->opaque, old_ptr, len);
     if ( func->new_addr )
@@ -77,15 +84,26 @@ void noinline arch_livepatch_apply(struct livepatch_func *func)
         add_nops(insn, len);
 
     memcpy(old_ptr, insn, len);
+
+applied:
+    func->applied = LIVEPATCH_FUNC_APPLIED;
 }
 
 /*
  * "noinline" to cause control flow change and thus invalidate I$ and
  * cause refetch after modification.
  */
-void noinline arch_livepatch_revert(const struct livepatch_func *func)
+void noinline arch_livepatch_revert(struct livepatch_func *func)
 {
+    /*
+     * If the apply action hasn't been executed
+     * on this function, do nothing...
+     */
+    if ( is_func_reverted(func) )
+        return;
+
     memcpy(func->old_addr, func->opaque, livepatch_insn_len(func));
+    func->applied = LIVEPATCH_FUNC_NOT_APPLIED;
 }
 
 /*

@@ -26,9 +26,16 @@ void arch_livepatch_apply(struct livepatch_func *func)
 
     ASSERT(vmap_of_xen_text);
 
+    /*
+     * If the apply action has been already executed
+     * on this function, do nothing...
+     */
+    if ( is_func_applied(func) )
+         return;
+
     len = livepatch_insn_len(func);
     if ( !len )
-        return;
+        goto applied;
 
     /* Save old ones. */
     memcpy(func->opaque, func->old_addr, len);
@@ -60,6 +67,9 @@ void arch_livepatch_apply(struct livepatch_func *func)
     if ( func->new_addr )
         clean_and_invalidate_dcache_va_range(func->new_addr, func->new_size);
     clean_and_invalidate_dcache_va_range(new_ptr, sizeof (*new_ptr) * len);
+
+applied:
+    func->applied = LIVEPATCH_FUNC_APPLIED;
 }
 
 /* arch_livepatch_revert shared with ARM 32/ARM 64. */
