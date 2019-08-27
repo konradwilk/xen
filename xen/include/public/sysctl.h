@@ -35,7 +35,7 @@
 #include "domctl.h"
 #include "physdev.h"
 
-#define XEN_SYSCTL_INTERFACE_VERSION 0x00000012
+#define XEN_SYSCTL_INTERFACE_VERSION 0x00000013
 
 /*
  * Read console content from Xen buffer ring.
@@ -956,6 +956,15 @@ struct xen_sysctl_livepatch_action {
                                             /* hypervisor default. */
                                             /* Or upper bound of time (ns) */
                                             /* for operation to take. */
+
+/*
+ * Overwrite default inter-module buildid dependency chain enforcement.
+ * Check only if module is built for given hypervisor by comparing buildid.
+ */
+#define LIVEPATCH_ACTION_APPLY_NODEPS (1 << 0)
+    uint64_t flags;                         /* IN: action flags. */
+                                            /* Provide additional parameters */
+                                            /* for an action. */
 };
 
 struct xen_sysctl_livepatch_op {
