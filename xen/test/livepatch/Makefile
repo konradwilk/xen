@@ -77,6 +77,8 @@ xen_hello_world.o: config.h livepatch_depends.h livepatch_xen_depends.h modinfo.
 .PHONY: $(LIVEPATCH)
 $(LIVEPATCH): xen_hello_world_func.o xen_hello_world.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH) $^
+	$(OBJCOPY) --strip-debug --strip-symbol=$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --strip-debug --strip-symbol=$(XEN_NOTE_SYMBOL) $@
 
 .PHONY: modinfo.bin
 modinfo.bin:
@@ -133,12 +135,16 @@ xen_bye_world.o: config.h hello_world_livepatch_depends.h livepatch_xen_depends.
 .PHONY: $(LIVEPATCH_BYE)
 $(LIVEPATCH_BYE): xen_bye_world_func.o xen_bye_world.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_BYE) $^
+	$(OBJCOPY) --strip-debug --strip-symbol=$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --strip-debug --strip-symbol=$(XEN_NOTE_SYMBOL) $@
 
 xen_replace_world.o: config.h livepatch_depends.h livepatch_xen_depends.h
 
 .PHONY: $(LIVEPATCH_REPLACE)
 $(LIVEPATCH_REPLACE): xen_replace_world_func.o xen_replace_world.o
 	$(LD) $(LDFLAGS) $(build_id_linker) -r -o $(LIVEPATCH_REPLACE) $^
+	$(OBJCOPY) --strip-debug --strip-symbol=$(NOTE_SYMBOL) $@
+	$(OBJCOPY) --strip-debug --strip-symbol=$(XEN_NOTE_SYMBOL) $@
 
 xen_nop.o: config.h livepatch_depends.h livepatch_xen_depends.h
 
